@@ -180,8 +180,74 @@ public interface Consumer<T>
 
 关于函数式接口：
 
-1、一个接口它只有一个抽象方法，那么该接口是一个函数式接口
+1)、一个接口它只有一个抽象方法，那么该接口是一个函数式接口
 
-2、如果我们在某个接口上声明一个FunctionalInterface注解，那么编译器就会安装函数式接口的方式来要求改接口
+2)、如果我们在某个接口上声明一个FunctionalInterface注解，那么编译器就会安装函数式接口的方式来要求改接口
 
-3、如果某个接口只有一个抽象方法，但是我们并没有给这个接口声明FunctionalInterface注解，那么编译器依旧会将该接口看作是函数式接口。
+3)、如果某个接口只有一个抽象方法，但是我们并没有给这个接口声明FunctionalInterface注解，那么编译器依旧会将该接口看作是函数式接口。
+
+
+3、函数式接口 的使用
+package com.learn.jdk;
+
+/**
+ * @ClassName: MyInterfaceDemo
+ * @Description:
+ * @Author: lin
+ * @Date: 2019/12/3 22:48
+ * @History:
+ * @<version> 1.0
+ */
+@FunctionalInterface
+ interface MyInterfaceDemo {
+    /**
+     * te
+     */
+    void  test();
+
+    /**
+     * to
+     * @return
+     */
+    @Override
+    String toString();
+}
+
+/**
+ * test2类
+ * @return
+ * @exception
+ * @author lin
+ * @Date 22:52 2019/12/3
+ **/
+public class Test2{
+    public  void  myTest(MyInterfaceDemo myInterfaceDemo){
+       System.out.println(1);
+       myInterfaceDemo.test();
+       System.out.println(2);
+    }
+
+   public static void main(String[] args) {
+      Test2 t = new Test2();
+      // 函数式编程，以前要写匿名函数就是下面 的写法,
+      // 所以使用函数式编程方式来编写匿名类就比较方便
+//      t.myTest(new MyInterfaceDemo() {
+//         @Override
+//         public void test() {
+//            System.out.println("mytest");
+//         }
+//      });
+
+      // 这里使用() 是因为函数式接口中的方法是没有参数的。
+      t.myTest(()->{
+         System.out.println("mytest");
+      });
+
+      MyInterfaceDemo demo = ()->{
+         System.out.println("hello");
+      };
+      System.out.println("MyInterfaceDemo的类型==="+demo.getClass());
+      System.out.println("父类型===="+demo.getClass().getSuperclass());
+      System.out.println("实现了那些接口========="+demo.getClass().getInterfaces()[0]);
+   }
+}
