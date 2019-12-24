@@ -378,7 +378,8 @@ public class Demo5 {
          // 遍历集合中每一个元素 然后做一个映射 将其转换成大写， 转换成大写之后还是返回stream.
          // 所以调用foreach方法 把每个元素打印出来
          list.stream().map(item -> item.toUpperCase()).forEach(item -> System.out.println(item));
-        // 第三 通过方法引用方式来写, 一个输入参数，得到一个返回结果
+        // 第三 通过方法引用方式来写, 给定一个输入参数，得到一个返回结果
+        // 这里的输入是指调用了toUpperCase 这个方法的“对象”作为输入参数。
         list.stream().map(String::toUpperCase).forEach(item-> System.out.println(item));
     }
 }
