@@ -1,4 +1,4 @@
-package com.learn.jdk;
+package com.learn.jdk.chapter3;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;

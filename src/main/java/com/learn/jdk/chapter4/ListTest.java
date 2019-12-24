@@ -1,4 +1,4 @@
-package com.learn.jdk;
+package com.learn.jdk.chapter4;
 
 import java.util.Arrays;
 import java.util.List;
@@ -30,6 +30,10 @@ public class ListTest {
         System.out.println("---------------------");
 
         // 第三种, 这里
+        // 这个 forecah 方法是一个默认方法，它是 定义在Iterabel中，这个和抽象类有点类似
+        // 抽象类中 可以有抽象方法和具体实现方法，抽象方法必须由子类实现 ，而具体实现可以直接拿过来使用。
+        // 所以说这个 默认方法的定义和 抽象类中的 具体实现方法类似。
+
         lists.forEach(new Consumer<Integer>() {
             @Override
             public void accept(Integer integer) {
@@ -37,6 +41,10 @@ public class ListTest {
             }
         });
         System.out.println("---------------------");
+
+        // 通过方法引用来 创建函数接口的实例
+        // method reference , 这个其实就是上面的另一种形式
+        lists.forEach(System.out::println);
     }
 
 }

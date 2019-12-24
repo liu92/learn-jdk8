@@ -1,6 +1,7 @@
-package com.learn.jdk;
+package com.learn.jdk.chapter4;
 
 /**
+ *  chapter4 深入函数式接口与方法引用
  * @ClassName: MyInterfaceDemo
  * @Description:
  * @Author: lin
