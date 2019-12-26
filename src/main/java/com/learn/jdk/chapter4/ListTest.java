@@ -44,6 +44,7 @@ public class ListTest {
 
         // 通过方法引用来 创建函数接口的实例
         // method reference , 这个其实就是上面的另一种形式
+        // System.out::println 这个 双冒号是方法引用，应该是调用的accept方法
         lists.forEach(System.out::println);
     }
 
