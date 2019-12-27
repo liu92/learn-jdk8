@@ -408,3 +408,336 @@ interface MyInterfaceDemo2{
     void method2();
 }
 ```
+8、Function接口详解
+```java
+package com.learn.jdk.chapter6;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Function;
+
+/**
+ * chapter6
+ * Function接口详解
+ * @ClassName: Demo6
+ * @Description:
+ * @Author: lin
+ * @Date: 2019/12/24 22:32
+ * History:
+ * @<version> 1.0
+ */
+public class Demo6 {
+    public static void main(String[] args) {
+
+        List<String> list = Arrays.asList("hello", "world", "hello world");
+        // String::toUpperCase 这个 双冒号是方法引用
+        // 通过一个String对象去调用 toUpperCase这个方法，这里String是个类，应该toUpperCase不是静态方法
+        // 那么为什么通过方法引用就可以呢？ 这里要注意 对于这种通过 String 类等这种类型 然后 :: 跟着实例方法
+        // 情况下 它的第一个输入参数 一定就是调用了这个toUpperCase方法的对象，
+        // 换句话说就是在真正调用toUpperCase的时候 一定会存在一个字符串类型的对象，然后通过这个对象去调用toUpperCase方法
+        //
+        // Function 有两个参数，一个是输入参数，一个是返回参数。
+        // 下面定义输入和输出都是string类型
+        Function<String, String> function = String::toUpperCase;
+        System.out.println(function.getClass().getInterfaces()[0]);
+        // 结果interface java.util.function.Function
+    }
+}
+
+/**
+ * 函数式接口
+ */
+@FunctionalInterface
+interface MyInterfaceDemo1{
+    /**
+     * 抽象方法
+     * method
+     */
+    void method();
+}
+
+/**
+ *
+ */
+@FunctionalInterface
+interface MyInterfaceDemo2{
+    /**
+     * 抽象方法
+     * method2
+     */
+    void method2();
+}
+```
+8.1 
+```java
+package com.learn.jdk.chapter6;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+
+/**
+ * chapter6 function接口详解
+ * @ClassName: StringComparator
+ * @Description: 字符串比较
+ * @Author: lin
+ * @Date: 2019/12/26 23:32
+ * History:
+ * @<version> 1.0
+ */
+public class StringComparator {
+    public static void main(String[] args) {
+        List<String> list = Arrays.asList("zhangsan", "lisi", "wangwu", "zhaoliu");
+        // 第一种、对集合排序
+        // Collections.sort(list, new Comparator<String>() {
+        // @Override
+        // public int compare(String o1, String o2) {
+        //   // 倒序排序
+        //   return o2.compareTo(o1);
+        //  }
+        //  });
+        //第二种排序, 这种排序方式 比较冗余，
+        // 2 它会提示 你使用Comparator.reverseOrder() 方法来进行替换
+        Collections.sort(list, (String o1, String o2)-> {
+            return o2.compareTo(o1);
+        });
+        // 2.1 上面的还可以修改为, 因为这list本身是字符串类型的
+        // 所以可以省略 o1,o2 类型声明
+        Collections.sort(list , (o1, o2)->{
+           return o2.compareTo(o1);
+        });
+        //2.2 还可以修改为下面的
+        // expression o2.compareTo(o1)
+        // statement {return o2.compareTo(o1);} 这是一个完整的语句 必须有分号
+        Collections.sort(list, (o1,o2)-> o2.compareTo(o1));
+
+        // Comparator.reverseOrder() 方法来替换上面的排序,
+        // 这一行代码就可以代替上面的排序，但是这种方法脱离了lambda表达
+        //Collections.sort(list, Comparator.reverseOrder());
+         System.out.println(list);
+    }
+}
+
+```
+ Tips: 
+ java lambda 表达是一种匿名函数；他是没有声明的方法，既没有访问修饰符，返回值声明和名字。
+ 
+ lambda表达式 作用
+  ● 传递行为，而不仅仅是值
+   ● 提升抽象层次
+   ● API重用性更好
+   ● 更加灵活
+ 
+ Java Lambda结构
+ ```
+● 一个Lambda表达式可以有零个或者多个参数
+● 参数的类型可以明确声明，也可以根据上下文推断。例如：(int a) 和 (a) 效果相同
+● 所有参数需要包括在圆括号内,参数之间用逗号相隔。 例如：(a,b) 或 (int a, int b) 或
+ (String a, int b, float c)
+● 空圆括号代表参数集为空。 例如：()->42  参数为空返回42
+● 当只有一个参数,且其类型可推导时，圆括号()可省略. 例如：a->return a*a
+● Lambda表达式的主体可包含零条或多条语句
+● 如果Lambda表达式的主体只有一条语句，花括号{} 可以省略. 匿名函数的返回类型与该主体表达式一致
+● 如果Lambda表达的主体包含一条以上语句,则表达式必须包含在花括号{}中(形成代码块)。 匿名函数的返回类型与代码的返回类型一致，若没有返回则为空
+```
+8.2 
+```java
+package com.learn.jdk.chapter6;
+
+import java.util.function.Function;
+
+/**
+ * function接口详解
+ * @ClassName: FunctionDemo
+ * @Description: function接口详解
+ * @Author: lin
+ * @Date: 2019/12/27 10:12
+ * History:
+ * @<version> 1.0
+ */
+public class FunctionDemo {
+    public static void main(String[] args) {
+       FunctionDemo functionDemo = new FunctionDemo();
+        // 参数1 是传递值，而Function是传递方法
+        // 将 va->{return  2 * va ;} 作为一个动作或者行为传递给了下面的compute方法
+        // 这种传递方式 和以前定义好 方法不同，这种方法事先不知道行为，
+        // 而以前的方法 比如method1，method2 方法 这种是已经定义好的 行为方式
+        System.out.println(functionDemo.compute(1, va->{return  2 * va ;}));
+        System.out.println(functionDemo.compute(2, va -> 5 + va));
+        System.out.println(functionDemo.compute(3 ,va->va* va));
+
+        System.out.println(functionDemo.convert(5, va ->String.valueOf(va+ "hello")));
+    }
+
+
+
+    private int compute(int a , Function<Integer, Integer> function){
+        // 将a 做为参数传入 ,
+        // apply 执行什么样的动作或者行为 提前是不知道的，
+        // 而是通过 方法的传递来告知的
+        int result = function.apply(a);
+        return  result;
+    }
+
+    private String convert(int b, Function<Integer, String> function){
+        return  function.apply(b);
+    }
+
+    private int method1(int a){
+        return  2 * a;
+    }
+
+    private int method2(int a){
+        return  5 + a;
+    }
+}
+```
+
+Tips:高阶函数
+```
+如果一个函数接收一个函数作为参数，或者返回一个函数作为返回值，那么该函数就叫高阶函数
+```
+8.3 Function中 函数组合
+```
+// compose 和将多个function串联在一起,
+// 这个function函数式接口有一个输入, apply之后会得出一个返回结果，
+// 然后这个输出结果又传递给了当前对象的apply方法. 这样做就形成了两个
+// Function的串联，比如有function1 和function2, 那么把function2作为
+// function1的 compose方法的参数传入进去,那么他的执行结果是先对输入参数
+// 执行function2的apply, 
+// 执行完之后 再将返回结果 再去作为当前的 funcion的输入参数
+default <V> Function<V, R> compose(Function<? super V, ? extends T> before) {
+        Objects.requireNonNull(before);
+        return (V v) -> apply(before.apply(v));
+    }
+
+// andThen 方法
+// 首先应用的是当前的Function,然后对应用完当前的function所得到的结果,
+default <V> Function<T, V> andThen(Function<? super R, ? extends V> after) {
+        Objects.requireNonNull(after);
+        return (T t) -> after.apply(apply(t));
+    }
+```
+8.4 BiFunction :接收两个参数并且得到一个结果
+```
+ /**
+  * Represents a function that accepts two arguments and produces a result.
+  * This is the two-arity specialization of {@link Function}.
+  *
+  * <p>This is a <a href="package-summary.html">functional interface</a>
+  * whose functional method is {@link #apply(Object, Object)}.
+  *
+  * @param <T> the type of the first argument to the function
+  * @param <U> the type of the second argument to the function
+  * @param <R> the type of the result of the function
+  *
+  * @see Function
+  * @since 1.8
+  */
+ @FunctionalInterface
+ public interface BiFunction<T, U, R>{}
+```
+ 8.5 Function和BiFunction
+ ```java
+package com.learn.jdk.chapter7;
+
+import java.util.function.BiFunction;
+import java.util.function.Function;
+
+/**
+ * chapter7  function与 biFunction函数式接口详解
+ * @ClassName: FunctionDemo2
+ * @Description:  function与 biFunction函数式接口详解
+ * @Author: lin
+ * @Date: 2019/12/27 15:01
+ * History:
+ * @<version> 1.0
+ */
+public class FunctionDemo2 {
+    public static void main(String[] args) {
+        FunctionDemo2 function  = new FunctionDemo2();
+        // 调用compose方法
+        // 先计算后面的 va*va, 然后将其计算的结果传递当前对象的apply方法, 再去计算
+        // va * 3
+        // 2 * 2 -> 4 然后 4 * 3 =12
+        System.out.println(function.compute1(2, va->va * 3, va -> va * va));
+        // 调用andThen方法
+        // 先计算前面的 va * 3, 然后将其计算的结果传递当前对象的apply方法, 再去计算
+        // va * va
+        // 2 * 3 =6 --> 6*6 =36
+        System.out.println(function.compute2(2, va->va * 3, va -> va * va));
+
+        // 输入两个参数 返回一个结果
+        System.out.println(function.compute3(1, 2 ,(va1, va2) -> va1 + va2));
+        System.out.println(function.compute3(1, 2 ,(va1, va2) -> va1 - va2));
+        System.out.println(function.compute3(1, 2 ,(va1, va2) -> va1 * va2));
+        System.out.println(function.compute3(1, 2 ,(va1, va2) -> va1 / va2));
+        //  BiFunction lambda表达式 (v1, v2)-> v1 + v2
+        // Function lambda表达式 v3-> v3 * v3
+        // 首先将输入应用到 当前的biFunction, 也就是(v1, v2)-> v1 + v2
+        // (v1, v2)-> v1 + v2的结果作为 参数的function 传入, 也就是 v3-> v3 * v3的输入
+        System.out.println(function.compute4(2, 3, (v1, v2)-> v1 + v2, v3-> v3 * v3));
+        // 思考： 为什么BiFunction没有 compose方法?
+        // 个人理解： 如果有compose方法，那么在接收参数后，首先会调用apply(a),
+        // 但是其引用返回的值只有一个，这样就你不能传入到 BiFunction中apply(a,b)方法去
+    }
+
+    /**
+     * compose使用
+     * @param t
+     * @param function1
+     * @param function2
+     * @return
+     */
+    public  int compute1(int t, Function<Integer, Integer> function1, Function<Integer, Integer> function2){
+        // 先去对输入参数应用 function2的 apply,
+        // 然后把function2的结果作为function1的apply输入
+        return  function1.compose(function2).apply(t);
+    }
+
+    /**
+     * andThen使用
+     * @param t
+     * @param function1
+     * @param function2
+     * @return
+     */
+    public  int compute2(int t, Function<Integer, Integer> function1, Function<Integer, Integer> function2){
+        // 先去对输入参数应用 function1的 apply,
+        // 然后把function1的结果作为function2的apply输入
+        return  function1.andThen(function2).apply(t);
+    }
+
+    /**
+     * BiFunction使用
+     * @param a
+     * @param b
+     * @param biFunction
+     * @return
+     */
+    public int compute3(int a, int b, BiFunction<Integer, Integer, Integer> biFunction){
+        return  biFunction.apply(a, b);
+    }
+
+    /**
+     *  使用BiFunction中 andThen方法，
+     *  注意这里andThen方法中接收的是Function,因为apply的返回值只有一个,
+     *  然后这个值作andThen(Function<? super R, ? extends V> after) 方法中after为参数
+     *  的输入，所以只有一个输入值 所以是Function类型。
+     * @param a
+     * @param b
+     * @param biFunction
+     * @param function
+     * @return
+     */
+    public int compute4(int a, int b, BiFunction<Integer, Integer, Integer> biFunction, Function<Integer, Integer> function ){
+        // 将BiFunction 调用andThen 方法，然后将其内部方法中调用apply(a,b)方法
+        // 这个方法返回值只有一个，然后将这个返回值作为after参数 ,通过after调用 apply方法
+        return biFunction.andThen(function).apply(a, b);
+    }
+}
+
+```
+ 8.6 BiFunction函数式接口实例
+ 

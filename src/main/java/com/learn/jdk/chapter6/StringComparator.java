@@ -25,7 +25,24 @@ public class StringComparator {
         //   return o2.compareTo(o1);
         //  }
         //  });
-        // System.out.println(list);
+        //第二种排序, 这种排序方式 比较冗余，
+        // 2 它会提示 你使用Comparator.reverseOrder() 方法来进行替换
+        Collections.sort(list, (String o1, String o2)-> {
+            return o2.compareTo(o1);
+        });
+        // 2.1 上面的还可以修改为, 因为这list本身是字符串类型的
+        // 所以可以省略 o1,o2 类型声明
+        Collections.sort(list , (o1, o2)->{
+           return o2.compareTo(o1);
+        });
+        //2.2 还可以修改为下面的
+        // expression o2.compareTo(o1)
+        // statement {return o2.compareTo(o1);} 这是一个完整的语句 必须有分号
+        Collections.sort(list, (o1,o2)-> o2.compareTo(o1));
 
+        // Comparator.reverseOrder() 方法来替换上面的排序,
+        // 这一行代码就可以代替上面的排序，但是这种方法脱离了lambda表达
+        //Collections.sort(list, Comparator.reverseOrder());
+         System.out.println(list);
     }
 }
