@@ -28,7 +28,17 @@ public class PersonDemo {
         List<Person> personResult2 = test.getPersonByAge(20, persons);
         personResult2.forEach(person -> System.out.println(person.getAge()));
 
+        List<Person> personResult3 = test.getPersonAge2(20 , persons, (age, personList)->
+            personList.stream().filter(person -> person.getAge() > age).collect(Collectors.toList()));
 
+        personResult3.forEach(person -> System.out.println(person.getAge()));
+
+        System.out.println("===================================================");
+
+        List<Person> personResult4 = test.getPersonAge2(20 , persons, (age, personList)->
+                personList.stream().filter(person -> person.getAge() <= age).collect(Collectors.toList()));
+
+        personResult4.forEach(person -> System.out.println(person.getAge()));
     }
 
     /**
@@ -68,6 +78,11 @@ public class PersonDemo {
 
 
         // 上面只是定义好了BiFunction, 这里才是应用它
+        return  biFunction.apply(age, persons);
+    }
+
+
+    public List<Person> getPersonAge2(int age,List<Person> persons, BiFunction<Integer, List<Person>, List<Person>> biFunction){
         return  biFunction.apply(age, persons);
     }
 }

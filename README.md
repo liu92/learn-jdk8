@@ -740,4 +740,233 @@ public class FunctionDemo2 {
 
 ```
  8.6 BiFunction函数式接口实例
- 
+ ```java
+package com.learn.jdk.chapter8;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.BiFunction;
+import java.util.stream.Collectors;
+
+/**
+ * BiFunction函数式接口实例演示
+ * @ClassName: PersonDemo
+ * @Description: BiFunction函数式接口实例演示
+ * @Author: lin
+ * @Date: 2019/12/27 17:07
+ * History:
+ * @<version> 1.0
+ */
+public class PersonDemo {
+    public static void main(String[] args) {
+        Person person1 = new Person("zairian", 20);
+        Person person2 = new Person("lisa", 30);
+        Person person3 = new Person("wangle", 40);
+        List<Person> persons = Arrays.asList(person1, person2, person3);
+
+        PersonDemo test = new PersonDemo();
+//        List<Person> personResult = test.getPersonByUserName("lisa", persons);
+//        personResult.forEach(person -> System.out.println(person.getUsername()));
+
+        List<Person> personResult2 = test.getPersonByAge(20, persons);
+        personResult2.forEach(person -> System.out.println(person.getAge()));
+
+        List<Person> personResult3 = test.getPersonAge2(20 , persons, (age, personList)->
+            personList.stream().filter(person -> person.getAge() > age).collect(Collectors.toList()));
+
+        personResult3.forEach(person -> System.out.println(person.getAge()));
+
+        System.out.println("===================================================");
+
+        List<Person> personResult4 = test.getPersonAge2(20 , persons, (age, personList)->
+                personList.stream().filter(person -> person.getAge() <= age).collect(Collectors.toList()));
+
+        personResult4.forEach(person -> System.out.println(person.getAge()));
+    }
+
+    /**
+     * 根据参数 来判断符合条件的元素，然后返回集合
+     * @param userName
+     * @param persons
+     * @return
+     */
+    public List<Person> getPersonByUserName(String userName, List<Person> persons){
+        // 这行代码的意思就是 将persons转换成流,然后过滤流中每一个元素,
+        // filter 也是返回stream 对象, 这是stream的中间操作,每次操作完成后又返回这个对象,
+        // 最后想把stream转换成 集合 可通过collect(Collectors.toList())进行转换。
+        // 每一个元素要符合这个判断条件, 最后把它转换成list进行返回
+         return  persons.stream().filter(person -> person.getUsername().equals(userName)).
+                 collect(Collectors.toList());
+    }
+
+    /**
+     * 判断集合中大于传入的 age 参数。
+     * @param age
+     * @param persons
+     * @return
+     */
+    public  List<Person> getPersonByAge(int age, List<Person> persons){
+        // 首先定义了一个BiFunction 这样一个对象, 然后他有两个参数,
+        // 对于这两个参数 直接使用stream(流)的方式 去找到里面的每一个对象,
+        // 这个对象的年龄要大于 ageOfPerson, 然后.collect(Collectors.toList()) 转换成一个集合.
+        // 如果是statement {return o2.compareTo(o1);} 这是一个完整的语句, 那么必须有return
+        // 下面可以替换 expression lambda , 也就是去掉花括号 {} 和return
+        BiFunction<Integer, List<Person>, List<Person>> biFunction =
+//                (ageOfPerson, personList)->{
+//           return   personList.stream().filter(person -> person.getAge()> ageOfPerson).
+//                    collect(Collectors.toList());
+//        };
+        (ageOfPerson, personList)-> personList.stream().filter(person -> person.getAge()> ageOfPerson).
+                    collect(Collectors.toList());
+
+
+        // 上面只是定义好了BiFunction, 这里才是应用它
+        return  biFunction.apply(age, persons);
+    }
+
+
+    public List<Person> getPersonAge2(int age,List<Person> persons, BiFunction<Integer, List<Person>, List<Person>> biFunction){
+        return  biFunction.apply(age, persons);
+    }
+}
+
+```
+9、 predicate 函数式接口
+```java
+package com.learn.jdk.chapter9;
+
+import java.util.function.Predicate;
+
+/**
+ * chapter predicate
+ * @ClassName: PredicateDemo
+ * @Description: predicate 函数式接口
+ * @Author: lin
+ * @Date: 2019/12/29 21:53
+ * History:
+ * @<version> 1.0
+ */
+public class PredicateDemo {
+    public static void main(String[] args) {
+        Predicate<String> predicate = p ->p.length() > 6;
+        // test方法的实现是 p ->p.length() > 6;
+        System.out.println(predicate.test("hello11"));
+    }
+}
+
+```
+9.1 predicate 深入剖析和 函数式编程本质
+```java
+
+package com.learn.jdk.chapter9;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Predicate;
+
+/**chapter10
+ * @ClassName: PredicateDemo2
+ * @Description:  predicate 深入剖析和 函数式编程本质
+ * @Author: lin
+ * @Date: 2019/12/29 22:05
+ * History:
+ * @<version> 1.0
+ */
+public class PredicateDemo2 {
+    public static void main(String[] args) {
+        List<Integer> list = Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+        PredicateDemo2 predicateDemo2 = new PredicateDemo2();
+        predicateDemo2.conditionFilter(list, item -> item % 2 == 0);
+        System.out.println("------------------------------");
+        predicateDemo2.conditionFilter(list, item -> item % 2 != 0);
+        System.out.println("------------------------------");
+        predicateDemo2.conditionFilter(list, item -> item > 5 );
+        System.out.println("------------------------------");
+        predicateDemo2.conditionFilter(list, item -> item > 3 );
+
+        //所有的判断都为真
+        predicateDemo2.conditionFilter(list, item-> true );
+        //所有的判断都为假
+        predicateDemo2.conditionFilter(list, item-> false );
+
+        System.out.println("------------------------------");
+        predicateDemo2.conditionFilter2(list, item -> item > 5, item -> item % 2 ==0);
+
+        //
+        System.out.println("isEqual======" + predicateDemo2.isEqual("test").test("test"));
+    }
+
+
+
+    /**
+     * 函数编程和一起面向对象编程的区别，
+     * 面向对象编程以前只需要接收 list, 具体怎么对这个参数进行处理，是由方法里面的代码来决定的
+     * 函数编程实际上是把怎么进行处理，在调用的时候动态传入进来，相比原来在方法体里面编写业务处理逻辑，
+     * 现在是将业务处理逻辑 抽取出来，然后放在调用者这一端。通过参数给动态的传入进来
+     * @param list
+     * @param predicate
+     */
+    public void  conditionFilter(List<Integer> list, Predicate<Integer> predicate){
+        for (Integer integer : list) {
+            //函数式编程它提供了一种更高层次的抽象化
+            if(predicate.test(integer)){
+                System.out.println(integer);
+            }
+        }
+    }
+
+    public void  conditionFilter2(List<Integer> list, Predicate<Integer> predicate, Predicate<Integer> predicate2){
+        for (Integer integer : list) {
+            //既要符合predicate的要求，也要符合predicate2的要求。然后才打印，否则不打印
+            // predicate.and(predicate2).test(integer) ====> 6 ,8,10
+            // predicate.or(predicate2).test(integer) ====> 2, 4, 6, 7, 8 ,9, 10
+            // predicate.and(predicate2).negate().test(integer) ====> 1, 2, 3, 4, 5,  7, 9
+            if(predicate.and(predicate2).negate().test(integer)){
+                System.out.println(integer);
+            }
+        }
+    }
+
+    public Predicate<String> isEqual(Object object){
+        return  Predicate.isEqual(object);
+    }
+}
+
+
+```
+9.2 其他的默认方法
+``` 
+1、表示的逻辑与，也就是当前的判断为假，后面的判断就不去计算了
+/**
+     * Returns a composed predicate that represents a short-circuiting logical
+     * AND of this predicate and another.  When evaluating the composed
+     * predicate, if this predicate is {@code false}, then the {@code other}
+     * predicate is not evaluated.
+     */
+    default Predicate<T> and(Predicate<? super T> other) {
+        Objects.requireNonNull(other);
+        return (t) -> test(t) && other.test(t);
+    }
+2、表示的逻辑非，也就是取反
+    /**
+     * Returns a predicate that represents the logical negation of this
+     * predicate.
+     *
+     */
+    default Predicate<T> negate() {
+        return (t) -> !test(t);
+    }
+3、表示的逻辑或者的关系
+    /**
+     * Returns a composed predicate that represents a short-circuiting logical
+     * OR of this predicate and another.  When evaluating the composed
+     * predicate, if this predicate is {@code true}, then the {@code other}
+     * predicate is not evaluated.
+     *
+     */
+    default Predicate<T> or(Predicate<? super T> other) {
+        Objects.requireNonNull(other);
+        return (t) -> test(t) || other.test(t);
+    }
+
+```
