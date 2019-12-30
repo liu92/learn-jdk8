@@ -970,3 +970,158 @@ public class PredicateDemo2 {
     }
 
 ```
+10. supplier 与函数式接口总结
+```java
+package com.learn.jdk.chapter11;
+
+import java.util.function.Supplier;
+
+/**
+ * 通过使用supplier来生成 student的实例
+ * @ClassName: StudentDemo
+ * @Description: 通过使用supplier来生成 student的实例
+ * @Author: lin
+ * @Date: 2019/12/30 9:19
+ * History:
+ * @<version> 1.0
+ */
+public class StudentDemo {
+    public static void main(String[] args) {
+        //第一种
+       Supplier<Student> supplier = () -> new Student();
+       System.out.println(supplier.get().getName());
+       System.out.println("-------------------");
+       //第二种：方法引用,            构造方法引用，将鼠标放在new关键字上，就可以看到其实调用的是构造方法
+        // Supplier 接口中定义，不接受参数 ，返回一个对象。所以调用构造方法符合这个定义
+        // 如果 student类中 有多个构造方法，编译器会自动去找 不传入参数的构造方法。
+        Supplier<Student> supplier2 = Student::new;
+        System.out.println(supplier2.get().getName());
+    }
+}
+```
+10.1
+```java
+
+/**
+ * Chapter11 supplier
+ * @ClassName: SupplierDemo
+ * @Description: supplier 与函数式接口总结
+ * @Author: lin
+ * @Date: 2019/12/30 9:12
+ * History:
+ * @<version> 1.0
+ */
+public class SupplierDemo {
+    public static void main(String[] args) {
+        // 不接受参数，然后返回结果
+        Supplier<String> supplier = () -> "hello world";
+        //得到一个结果
+        System.out.println(supplier.get());
+    }
+}
+```
+11、optional学习
+```java
+package com.learn.jdk.chapter12;
+
+import java.util.Optional;
+
+/**
+ * chapter 12
+ * @ClassName: OptionalDemo
+ * @Description: optional 使用
+ * @Author: lin
+ * @Date: 2019/12/30 14:31
+ * History:
+ * @<version> 1.0
+ */
+public class OptionalDemo {
+    public static void main(String[] args) {
+        //下面的是传统的面向对象方式
+        // of方法表示传入的参数不能为空
+        Optional<String> optional = Optional.of("hhh");
+        // 判断是否存在，如果存在则打印
+        // 这种方式不是函数式 编程方式
+//        if(optional.isPresent()){
+//            System.out.println(optional.get());
+//        }
+
+        // 这里使用函数式的风格来重写
+        // 推荐的Optional使用方式
+        optional.ifPresent(item -> System.out.println(item));
+
+        System.out.println("----------------------");
+        // 如果optional 中不存在，则打印 下面的world
+        System.out.println(optional.orElse("world"));
+        System.out.println("---------");
+        // 不接收参数
+        // 如果optional 没有值，则调用supplier函数式接口 获取一个值打印出来。
+        // 如果optional里面的值存在， 那么就不打印
+        System.out.println(optional.orElseGet(() -> "li"));
+
+    }
+}
+
+```
+11.1 optional 深入详解
+```java
+package com.learn.jdk.chapter12;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * chapter12
+ * @ClassName: OptionalDemo2
+ * @Description: optional 使用
+ * @Author: lin
+ * @Date: 2019/12/30 15:23
+ * History:
+ * @<version> 1.0
+ */
+public class OptionalDemo2 {
+    public static void main(String[] args) {
+      Employee employee = new Employee();
+      employee.setName("lisa");
+
+      Employee employee1 = new Employee();
+      employee1.setName("zairian");
+
+      Company company = new Company();
+      company.setName("company1");
+      List<Employee> employees  = Arrays.asList(employee, employee1);
+      company.setEmployees( employees);
+      // 如果company中不包含 任何employee信息, 那么就返回 一个空的集合
+      // 如果存在就返回一个列表
+      List<Employee> list = company.getEmployees();
+
+      Optional<Company> optionals = Optional.ofNullable(company);
+      //
+      System.out.println(optionals.map(Company::getEmployees).
+                orElse(Collections.emptyList()));
+    }
+
+
+    //Tips: 不要将Optional试图作为方法参数，也不要在类中定义Optional成员变量，
+    // Optional 通常只作为方法的返回值，用来规避空指针异常这样一个问题
+    // 编写Optional 一定要使用函数式的方式来编写
+}
+
+
+```
+
+12、方法引用(method reference)
+方法引用实际上是Lambda表达式的一种语法糖
+```
+/**
+可以将方法引用看作是一个【函数指针】，function pointer
+方法引用共分为4类:
+1. 类名::静态方法名（注意不能传入参数，编译器会自动去识别）
+2. 引用名(对象名，其实就是对象的一个引用)::实例方法名
+
+*/
+
+```
+
