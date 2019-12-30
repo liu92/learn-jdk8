@@ -27,7 +27,7 @@ public class StudentComparator {
      * @param student2
      * @return
      */
-    public static int compareStudent1ByName(StudentDe student1, StudentDe student2){
+    public  int compareStudent1ByName(StudentDe student1, StudentDe student2){
         return student1.getName().compareToIgnoreCase(student2.getName());
     }
 }
