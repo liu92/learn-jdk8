@@ -1120,8 +1120,99 @@ public class OptionalDemo2 {
 方法引用共分为4类:
 1. 类名::静态方法名（注意不能传入参数，编译器会自动去识别）
 2. 引用名(对象名，其实就是对象的一个引用)::实例方法名
-
+3. 类名::实例方法名
+4. 构造方法引用: 类名::new (实际上就是调用这个类的构造方法来生成对象)
 */
 
 ```
+12. 默认方法
+1、类方法实现接口，并且接口中有相同的方法
+```java
+package com.learn.jdk.chapter13.defaultmethod;
 
+/**
+ * @ClassName: MyClass
+ * @Description:
+ * @Author: lin
+ * @Date: 2019/12/31 11:10
+ * History:
+ * @<version> 1.0
+ */
+public class MyClass implements MyInterface1 ,MyInterface2 {
+    public static void main(String[] args) {
+        MyClass myClass = new MyClass();
+        // 如果该类实现了 MyInterface1和MyInterface2,
+        // 并且两个接口有相同的方法，这种情况下会发生什么呢？
+        // 注意: 在这种情况下 实现接口的类会去重写这个 默认方法。
+        //  因为myclass 有一个defaultMethod实现，但是不知取那个，
+        //  编译器是无从得知，所以我们显示的告诉编译， defaultMethod使用的哪一个
+        myClass.defaultMethod();
+    }
+
+    @Override
+    public void defaultMethod() {
+        // 如果要使用MyInterface2中的方法那么
+        // 使用这种方式,这样就可以使用MyInterface2中的方法了
+        MyInterface2.super.defaultMethod();
+//        System.out.println("hhhhh");
+    }
+}
+```
+12.2 默认方法:一个类继承实现类，并实现接口
+
+```java
+
+package com.learn.jdk.chapter13.defaultmethod;
+
+import com.learn.jdk.chapter13.defaultmethod.impl.MyInterface1Impl;
+
+/**
+ * 继承实现类，实现接口
+ * @ClassName: MyClass2
+ * @Description:
+ * @Author: lin
+ * @Date: 2019/12/31 13:41
+ * History:
+ * @<version> 1.0
+ */
+public class MyClass2 extends MyInterface1Impl implements MyInterface2{
+    public static void main(String[] args) {
+        // 如果一个类继承了一个类和实现了一个接口,
+        // 而继承的这个类重写了接口的默认的方法, 那么MyClass2就会使用
+        // 重写了方法的 方法，而不会使用MyInterface2接口中默认方法
+        MyClass2 myClass2 = new MyClass2();
+        myClass2.defaultMethod();
+        // 这里有一个java的设定: 实现类优先级要比接口的优先级高,
+        // 这是因为实现类更为具体
+    }
+}
+```
+12.3 为什么接口可以有默认方法的实现? 这样设计的意义在于什么地方?
+```
+1. 在新的特性要保证向后兼容, 保证既有接口中的方法不被破坏。
+比如: 我们有一个类实现一个接口，而这个类要实现接口中相应方法，
+如果在接口中有默认方法实现,那么实现接口的时候,
+这个实现类就继承了默认方法。并这个类什么都不用做
+```
+
+13. stream 流
+```
+流由3部分构成:
+1.源
+2.零个或者多个中间操作。(操作的就是这个源)
+3.终止操作
+
+流操作的分类:
+1.惰性求值
+  stream.xx().yyy().count(), 中间的xx().yyy()操作就是惰性操作,
+  只有真正去调用count()计算是,中间操作才会被执行。
+  如果没有count(),那么stream.xx().yyy() 就不会被执行,因为这里面没有终止操作
+2.及早求值
+  就是stream.xx().yyy().count()中的count() 立马要得到值
+
+.Collection提供了新的stream()方法
+.流不存储值，通过管道的方式获取值
+.本质函数式的,对流的操作会生成一个结果，
+ 不过并不会修改底层的数据源,集合可以作为流的底层数据源
+.延迟查找，很多流操作(过滤，映射，排序等)都可以延迟实现
+```

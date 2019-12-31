@@ -17,7 +17,7 @@ public class StudentDemo {
        Supplier<Student> supplier = () -> new Student();
        System.out.println(supplier.get().getName());
        System.out.println("-------------------");
-       //第二种：方法引用,            构造方法引用，将鼠标放在new关键字上，就可以看到其实调用的是构造方法
+       //第二种：方法引用, 构造方法引用，在new关键字上，就可以看到其实调用的是构造方法
         // Supplier 接口中定义，不接受参数 ，返回一个对象。所以调用构造方法符合这个定义
         // 如果 student类中 有多个构造方法，编译器会自动去找 不传入参数的构造方法。
         Supplier<Student> supplier2 = Student::new;
