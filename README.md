@@ -1216,3 +1216,39 @@ public class MyClass2 extends MyInterface1Impl implements MyInterface2{
  不过并不会修改底层的数据源,集合可以作为流的底层数据源
 .延迟查找，很多流操作(过滤，映射，排序等)都可以延迟实现
 ```
+
+20、内部迭代和外部迭代本质
+```
+stream 和sql 语句很类似
+select name from student where age > 23 and address ="shanghai" order by age desc;
+
+内部迭代
+描述性的语言
+students.stream().filter(student ->student.getAge()-23)
+ .filter(student -> student.getAddress().equals("shanghai"))
+ .sorted(...).forEach(student -> System.out.println(student.getName()));
+
+中间操作都会返回一个stream对象，比如说返回Stream<Student>, Stream<Integer>, Stream<String>
+终止操作则不会返回Stream类型，可能不返会值， 也有可能返回其他类型的单个值。
+
+外部迭代
+jdk8 之前的写法，这种写法描述性不强
+List<Student> list = new ArrayList<>();
+for(int i=0; i< students.size(); i++){
+ Student student = students.get(i);
+  if(student.getAge() > 20 && student.getAddress().equals("shanghai")){
+   list.add(student);
+ }
+}
+Collections.sort(list, Comparator(...));
+for(Student student : list){
+  System.out.println(student.getName());
+}
+
+fork join
+集合关注是数据与数据存储本身
+流关注的则是对数据的计算
+
+流与迭代器类似的一点是: 流是无法重复使用或消费的。
+
+```
