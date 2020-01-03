@@ -1252,3 +1252,115 @@ fork join
 流与迭代器类似的一点是: 流是无法重复使用或消费的。
 
 ```
+22、深入源码分析 collect
+```
+1、collect 收集器
+2、Collector 作为collect方法的参数
+3、Collector 是一个接口, 她是一个可变的汇聚(归约)操作，将输入元素积累到一个可变的结果容器中；
+  它会在所有元素都处理完毕后，将积累的结果转换为一个最终的表示(这是一个可选操作), 
+  还原操作可以顺序或并行执行
+有对应的实现类供我们去使用.
+
+4、Collectors 本身提供了关于Collector的常见汇聚实现, Collectors本身实际上是一个工厂.
+5、为了确保串行与并行操作结果的等价性，Collector函数需要满足两个条件: identity(同一性) 与associativity(关联性)
+6、a(某一个线程它的执行分支所得到的一个部分结果) == combiner.apply(a, supplier.get())
+7、函数式编程最大的特点: 表示做什么, 而不是如何做。 
+
+注意：
+串行
+ A a1 = supplier.get();
+ *     accumulator.accept(a1, t1); 第一个参数是每一次累积之后的中间结果
+, 第二个参数是stream中要处理的下一个元素 , 所以开始调用supplier.get() 得到a1, 这是一个结果容器。
+  这个结果容器是空的，每次要往这个容器中累积类容。所以第一次调用时这个容器是空的。
+t1是流中的下一个元素
+ *     accumulator.accept(a1, t2);
+ *      
+
+并行
+       A a2 = supplier.get();
+ *     accumulator.accept(a2, t1); 
+       一个线程将结果累积到a2中，
+ *     A a3 = supplier.get();
+       先得到一个新的容器，然后另外一个线程将遇到的第一个元素t2累积到a3中。 这个a2和a3是两个不同的对象
+ *     accumulator.accept(a3, t2);
+       前面的代码执行完成后产生两个部分结果a2,a3, 
+       然后调用combiner.apply(a2, a3)将两个部分结果合并起来 形成一个结果。
+       将这个结果传递给finisher.apply(). 最后会把这个合并后的结果转换成 最终的r2结果. 
+       对于结合性上来说 r1 必须等价于r2. 因为r1和r2 本身就是最终执行的结果。
+ *     R r2 = finisher.apply(combiner.apply(a2, a3)); 
+     
+对于单线程和多线程执行过程不一样，但是执行结果必须是一样的。
+
+reduce 和 collector 区别：
+reduce: 不可变性，里面处理的对象都是不可变的的。对于reduce操作 它本来是不可变的，但是通过一种可变的操作去实现它。
+ 在单线程情况下是可以正常运行的，但是在并行流情况下就错乱了
+collector(mutable container): 一种可变的行为,像LinkList, ArrayList就是可变结果容器
+
+==========================================
+一、
+* @see Stream#collect(Collector)
+ * @see Collectors
+ *
+ * @param <T> the type of input elements to the reduction operation
+ * @param <A> the mutable accumulation type of the reduction operation (often
+ *            hidden as an implementation detail)
+ * @param <R> the result type of the reduction operation
+ * @since 1.8
+ */
+public interface Collector<T, A, R> 
+接口中,
+1、参数T是流中每一个元素的类型， 
+2、A 是可变的容器的类型，比如第一个元素累积到集合当中，
+接着把第二个元素累积到集合当中....所以这个A实际上就是集合的类型。
+可以认为这个A就是中间操作生成结果的类型
+3、R表示汇聚结果的操作类型
+
+二、
+/**
+ * A function that folds a value into a mutable result container.
+ *
+ * @return a function which folds a value into a mutable result container
+ */
+ BiConsumer<A, T> accumulator();
+BiConsumer 类中:
+public interface BiConsumer<T, U>
+ 第一个参数T表示每一次操作的中间结果的那个类型, 而后面的U表示后面流中待处理的下一个元素类。
+所有根据BiConsumer类中的描述, 
+这里collector接口中 BiConsumer<A, T>  的参数A 就表示结果类型，每一次都要对结果做处理，
+并处理完之后这个结果作为下一次调用的第一个参数传进去。所以这个A就表示每一次处理的结果的类型
+而T就表示流中待处理的下一个元素的类型
+
+```
+
+25、收集器用法详解和多级分组合分区
+```
+Collectors 类是一个辅助类，可以认为是一个工厂。它的作用就是向开发者提供常见的Collector实现。
+并且Collectors的构造方法被设计为私有的，从而杜绝你创建对象的可能性. 
+ 它既然是工厂那么里面的方法大多都是静态方法。既然Collectors是工厂类 提供了常见的Collector接口的实现。
+我们知道Collector是接口 既然要实现那么一定要返回实现类xxxImpl 的实例。 
+CollectorImpl类和Collectors类的结合性是非常密切的，
+所以jdk的设计者就直接将CollectorImpl实现类放在了Collectors里面了 因为其他的地方是不会用到的。所以就直接放到Collectors类里面
+
+我们看Collectors 中实现的一些常用的方法，它返回的都是CollectorImpl实例。
+public static <T>
+    Collector<T, ?, List<T>> toList() {
+        return new CollectorImpl<>((Supplier<List<T>>) ArrayList::new, List::add,
+                                   (left, right) -> { left.addAll(right); return left; },
+                                   CH_ID);
+    }
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
