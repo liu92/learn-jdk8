@@ -63,6 +63,7 @@ public class MethodReferenceDemo2 {
 //        studentDes.forEach(studentDe ->
 //        System.out.println("使用lambda方式排序"+studentDe.getScore()));
         // 使用方法引用方式
+
 //        studentDes.sort(studentComparator::compareStudent1ByScore);
 //        studentDes.forEach(studentDe ->
 //               System.out.println("使用方法引用方式排序"+studentDe.getScore()));

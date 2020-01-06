@@ -1252,6 +1252,11 @@ fork join
 流与迭代器类似的一点是: 流是无法重复使用或消费的。
 
 ```
+21、stream分组和分区
+```
+分组：group by
+分区：partition by (结果只会有两个分区，在程序语言中表达就是true 和false)
+```
 22、深入源码分析 collect
 ```
 1、collect 收集器
