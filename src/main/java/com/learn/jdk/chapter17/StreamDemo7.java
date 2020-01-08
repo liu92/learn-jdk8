@@ -6,7 +6,7 @@ import java.util.stream.Stream;
 
 /**
  * @ClassName: StreamDemo7
- * @Description:
+ * @Description: 1. Stream.generate() 方法使用
  * @Author: lin
  * @Date: 2020/1/2 10:02
  * History:

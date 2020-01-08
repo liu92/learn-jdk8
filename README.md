@@ -935,7 +935,7 @@ public class PredicateDemo2 {
 
 ```
 9.2 其他的默认方法
-``` 
+```
 1、表示的逻辑与，也就是当前的判断为假，后面的判断就不去计算了
 /**
      * Returns a composed predicate that represents a short-circuiting logical
@@ -1066,7 +1066,6 @@ public class OptionalDemo {
 11.1 optional 深入详解
 ```java
 package com.learn.jdk.chapter12;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -1158,6 +1157,7 @@ public class MyClass implements MyInterface1 ,MyInterface2 {
     }
 }
 ```
+
 12.2 默认方法:一个类继承实现类，并实现接口
 
 ```java
@@ -1194,6 +1194,283 @@ public class MyClass2 extends MyInterface1Impl implements MyInterface2{
 如果在接口中有默认方法实现,那么实现接口的时候,
 这个实现类就继承了默认方法。并这个类什么都不用做
 ```
+12.4 方法引用的使用
+```java
+package com.learn.jdk.chapter13;
+
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * chapter13 方法引用
+ * @ClassName: MethodReferenceDemo
+ * @Description: 方法引用的使用
+ * @Author: lin
+ * @Date: 2019/12/30 16:09
+ * History:
+ * @<version> 1.0
+ */
+public class MethodReferenceDemo {
+    public static void main(String[] args) {
+        List<String> list = Arrays.asList("hello", "world", "hello world");
+        // 使用一般lambda表达式
+        //list.forEach(item -> System.out.println(item));
+        // 可以将方法引用看作是一个【函数指针】，function pointer
+        // 也就是说指向一个函数的指针
+        list.forEach(System.out::println);
+    }
+}
+
+```
+12.5 方法引用4中使用方式
+```java
+package com.learn.jdk.chapter13;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+/**
+ *
+ * @ClassName: MethodReferenceDemo2
+ * @Description: 方法引用
+ * @Author: lin
+ * @Date: 2019/12/30 16:37
+ * History:
+ * @<version> 1.0
+ */
+public class MethodReferenceDemo2 {
+    public static void main(String[] args) {
+        /**
+         * 第一种、类名::静态方法名
+         */
+        StudentDe student1 = new StudentDe("zairian", 20);
+        StudentDe student2 = new StudentDe("lisp", 80);
+        StudentDe student3 = new StudentDe("wangle", 50);
+        StudentDe student4 = new StudentDe("zambia", 40);
+
+        List<StudentDe> studentDes = Arrays.asList(student1, student2, student3, student4);
+
+        // 这种方式是使用传统的lambda 方式来进行排序
+        // 本质上就是接受两个参数，然后它调用了一个方法，而这个方法本身是客观存在的，
+        // 所以下面方法引用通过类名来进行调用
+//        studentDes.sort((studentParam1, studentParam2) ->
+//                StudentDe.compareStudent1ByScore(studentParam1, studentParam2));
+//        studentDes.forEach(studentDe ->
+//        System.out.println("使用传统的lambda方式进行排序==="+studentDe.getScore()));
+
+        System.out.println("----------------");
+        // 使用方法引用的方式进行调用
+        // 方法引用使用的要求，你使用的lambda表达式的这个实现也就是方法体
+        // 它恰好有一个对应的方法跟他完成相同功能的 这么一个对应方法是客观存在的，
+        // 那么这个时候就可以将lambda 替换为方法引用
+//        studentDes.sort(StudentDe::compareStudent1ByScore);
+//        studentDes.forEach(studentDe ->
+//                System.out.println("使用方法引用的方式进行排序==="+studentDe.getScore()));
+
+        // 根据字母排序
+//        studentDes.sort((studentParam1, studentParam2) ->
+//                StudentDe.compareStudent1ByName(studentParam1, studentParam2));
+//        studentDes.forEach(studentDe ->
+//        System.out.println("使用传统的lambda方式进行字母排序==="+studentDe.getName()));
+//        studentDes.sort(StudentDe::compareStudent1ByName);
+//        studentDes.forEach(studentDe ->
+//        System.out.println("使用方法引用的方式根据字母排序==="+studentDe.getName()));
+
+
+        /**
+         * 第二种方式: 引用名(对象名，其实就是对象的一个引用)::实例方法名
+         */
+        // 先使用传统lambda方式
+        StudentComparator studentComparator = new StudentComparator();
+//        studentDes.sort((st1, st2) -> studentComparator.compareStudent1ByScore(st1, st2));
+//        studentDes.forEach(studentDe ->
+//        System.out.println("使用lambda方式排序"+studentDe.getScore()));
+        // 使用方法引用方式
+
+//        studentDes.sort(studentComparator::compareStudent1ByScore);
+//        studentDes.forEach(studentDe ->
+//               System.out.println("使用方法引用方式排序"+studentDe.getScore()));
+
+        // 根据字母排序
+//        studentDes.sort((st1, st2) -> studentComparator.compareStudent1ByName(st1, st2));
+//        studentDes.forEach(studentDe ->
+//               System.out.println("使用lambda方式排序"+studentDe.getName()));
+
+//        studentDes.sort(studentComparator::compareStudent1ByName);
+//        studentDes.forEach(studentDe ->
+//                System.out.println("使用方法引用方式排序" + studentDe.getName()));
+
+         // 第三种: 类名::实例方法名
+         // 这里和上面两种的区别就是，上面的调用都很明确
+         // 而下面这种就不是那么明确, 实例方法一定是对象来调用的,
+         // 但是这里使用的是类名来调用实例方法。这是不可能直接调用实例方法的。
+         // 那么这个实例方法一定是有那么一个对象来进行调用。
+         // 那么这个对象就是sort 方法里面接收的 lambda表达式的"第一个参数" 来去调用的compareByScore
+         // 如果接收多个参数 除了第一个参数之外，后续所有参数都做为这个方法的参数 传递进去
+         // 就是类似 这样 (st1, st2)-> st1.compareByScore( st2),
+         // 第一个参数 st1, 第二个参数st2 作为方法传进去的参数
+//         studentDes.sort(StudentDe::compareByScore);
+//         studentDes.forEach(studentDe ->
+//                System.out.println("第三种使用类名::实例方法引用方式进行分数排序=="
+//                        + studentDe.getScore()));
+
+//         studentDes.sort(StudentDe::compareByName);
+//         studentDes.forEach(studentDe ->
+//                System.out.println("第三种使用类名::实例方法引用方式进行名字排序=="
+//                        + studentDe.getName()));
+
+         //例子
+//         List<String> cis = Arrays.asList("sichuang","beijing","anhui","guangdong");
+//         Collections.sort(cis, (cis1, cis2)-> cis1.compareToIgnoreCase(cis2));
+//         cis.forEach(ci -> System.out.println(ci));
+         // 这两种形式就是等价的
+//         Collections.sort(cis, String::compareToIgnoreCase);
+//         cis.forEach(System.out::println);
+
+
+         MethodReferenceDemo2 methodDemo2 = new MethodReferenceDemo2();
+         System.out.println(methodDemo2.getString(String::new));
+
+         System.out.println(methodDemo2.getString2("hello", String::new));
+    }
+
+    public String getString(Supplier<String> supplier){
+       return supplier.get() + "test";
+    }
+
+    public String getString2(String str, Function<String, String> function){
+        return function.apply(str);
+    }
+}
+
+```
+12.6 方法引用中定义的比较方法
+```java
+package com.learn.jdk.chapter13;
+
+/**
+ * 方法引用2： 引用名(对象名，其实就是对象的一个引用)::实例方法名
+ * 将方法放在一个新的类中，并且方法不是静态方法，是实例方法
+ * @ClassName: StudentComparator
+ * @Description:
+ * @Author: lin
+ * @Date: 2019/12/30 17:28
+ * History:
+ * @<version> 1.0
+ */
+public class StudentComparator {
+    /**
+     * 根据分数进行比较
+     * @param student1
+     * @param student2
+     * @return
+     */
+    public  int compareStudent1ByScore(StudentDe student1, StudentDe student2){
+        return  student1.getScore() - student2.getScore();
+    }
+
+    /**
+     * 根据字母进行比较
+     * @param student1
+     * @param student2
+     * @return
+     */
+    public  int compareStudent1ByName(StudentDe student1, StudentDe student2){
+        return student1.getName().compareToIgnoreCase(student2.getName());
+    }
+}
+
+```
+12.7 方法引用中使用的实体
+```java
+package com.learn.jdk.chapter13;
+
+import com.learn.jdk.chapter11.Student;
+
+/**
+ *
+ * @ClassName: Student
+ * @Description:
+ * @Author: lin
+ * @Date: 2019/12/30 9:17
+ * History:
+ * @<version> 1.0
+ */
+public class StudentDe {
+    private String name;
+    private int score;
+
+    public StudentDe(){}
+
+    public StudentDe(String name, int score){
+        this.name = name;
+        this.score = score;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public void setScore(int score) {
+        this.score = score;
+    }
+
+    /**
+     * 下面的这个两个方法设计是有意而为之的，
+     * 因为这两个方法在调用时和这类没有任何关系，
+     * 也就是说将这两个方法发到其他的类中也是完全可以运行的 使用的。
+     * 下面的可以编译运行，但是从设计上来说是错误的。
+     * 根据分数排序
+     * 对集合中的若干个学生进行排序，所以是两两比较
+     * @param student1
+     * @param student2
+     * @return
+     */
+    public static int compareStudent1ByScore(StudentDe student1, StudentDe student2){
+        return  student1.getScore() - student2.getScore();
+    }
+
+    /**
+     * 根据名字排序
+     * @param student1
+     * @param student2
+     * @return
+     */
+    public static int compareStudent1ByName(StudentDe student1, StudentDe student2){
+        return student1.getName().compareToIgnoreCase(student2.getName());
+    }
+
+
+    /**
+     * 这才是正确的设计
+     * 当前的对象和 传入的对象比较，
+     *
+     * @param student
+     * @return
+     */
+    public int compareByScore(StudentDe student){
+        return  this.getScore() - student.getScore();
+    }
+
+
+    public int compareByName(StudentDe student){
+        return  this.getName().compareToIgnoreCase(student.getName());
+    }
+}
+
+```
+
 
 13. stream 流
 ```
@@ -1216,8 +1493,900 @@ public class MyClass2 extends MyInterface1Impl implements MyInterface2{
  不过并不会修改底层的数据源,集合可以作为流的底层数据源
 .延迟查找，很多流操作(过滤，映射，排序等)都可以延迟实现
 ```
+13.1 stream 简单使用
+```java
 
-20、内部迭代和外部迭代本质
+package com.learn.jdk.chapter15;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Stream;
+
+/**
+ * chapter15
+ * @ClassName: StreamDemo
+ * @Description: stream 操作方式示例
+ * @Author: lin
+ * @Date: 2019/12/31 15:12
+ * History:
+ * @<version> 1.0
+ */
+public class StreamDemo {
+    public static void main(String[] args) {
+        // 创建stream 对象
+        Stream stream = Stream.of("hello", "world");
+        String[] str = new String[]{"hello", "li"};
+        Stream stream1 = Stream.of(str);
+        Stream stream2 = Arrays.stream(str);
+        
+        // 通过list创建
+        List<String> list = Arrays.asList(str);
+        Stream<String> stream3 = list.stream();
+    }
+}
+
+```
+13.2 Stream 使用1
+```java
+package com.learn.jdk.chapter15;
+
+import java.util.stream.IntStream;
+
+/**
+ * @ClassName: StreamDemo1
+ * @Description: IntStream 操作方式示例
+ * @Author: lin
+ * @Date: 2019/12/31 15:21
+ * History:
+ * @<version> 1.0
+ */
+public class StreamDemo1 {
+    public static void main(String[] args) {
+        int[] ints = new int[]{1, 3, 5, 7, 9};
+        IntStream.of(ints).forEach(System.out::println);
+        System.out.println("-----------------");
+        // 在3,8 范围内的包含3,不包含8
+        IntStream.range(3, 8).forEach(System.out::println);
+        System.out.println("-----------------");
+        // 包含3和8
+        IntStream.rangeClosed(3, 8).forEach(System.out::println);
+    }
+
+}
+
+```
+13.3 IntStream使用
+```java
+package com.learn.jdk.chapter15;
+
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * @ClassName: StreamDemo2
+ * @Description: IntStream 应用
+ * @Author: lin
+ * @Date: 2019/12/31 15:35
+ * History:
+ * @<version> 1.0
+ */
+public class StreamDemo2 {
+    public static void main(String[] args) {
+        //示例:将整型list中元素都乘以2，然后计算乘以2以后集合中元素和
+        List<Integer> list = Arrays.asList(2, 4, 3, 5, 7);
+//        int sum = 0;
+//        int temp = 0;
+//        // 原来的for循环方法处理
+//        for (Integer integer : list) {
+//             sum += integer*2;
+//        }
+//        System.out.println("集合元素相加===="+sum);
+
+        // 现在使用stream来进行元素求和.
+        // 这里我们就可以知道流的构成
+        // list 就是 源
+        // map(itm -> itm * 2): 中间操作
+        // reduce() 就是终止操作
+        // reduce(0, Integer::sum) 这个reduce代码的意思就是0 + itm*2,
+        System.out.println("元素求和==="+list.stream().map(itm -> itm * 2).
+                reduce(0, Integer::sum));
+    }
+}
+
+```
+13.4 Stream 的深度解析和源码实践
+```java
+package com.learn.jdk.chapter15;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+/**
+ * chapter16
+ * @ClassName: StreamDemo4
+ * @Description: Stream 的深度解析和源码实践
+ * @Author: lin
+ * @Date: 2019/12/31 17:00
+ * History:
+ * @<version> 1.0
+ */
+public class StreamDemo4 {
+    public static void main(String[] args) {
+        //1
+//        Stream<String> stream = Stream.of("hello", "world", "lin");
+        //将一个stream对象 转换成 字符串数组
+        //String[] stringArray1 = stream.toArray(itm -> new String[itm]);
+        //方法引用, 这个正好符合IntFunction<A[]> 的声明
+        //
+//        String[] stringArray = stream.toArray(String[]::new);
+//        Arrays.asList(stringArray).forEach(System.out::println);
+
+        //2:将这个流转换成list
+        Stream<String> stream1 = Stream.of("hello", "world", "lin");
+//        List<String> collect = stream1.collect(Collectors.toList());
+        // 使用collect的下面方法进行处理,
+        // 第一个参数:不接受参数返回一个结果,
+        // 第二个参数:BiConsumer接收两个参数，accumulator是累加器
+        // 就是对集合中每一个元素进行遍历, 然后把这个集合的每一个元素应用到这个结果上面
+        // 将每一个元素添加到这个返回的集合中， 其中第一个参数theList就是要返回的集合，
+        //  第二个item是遍历的stream的当中的元素，将每一个元素都添加到这个theList当中
+        // 第三个参数:也是BiConsumer, 不过这个combiner是合并器，
+        //  也就是将上一次的操作结果和下一次的操作结果合并在一起
+        // theList1.addAll(theList2) 就是讲上一次遍历得到的每一个list都添加到最终的theList1中去,
+        // 最后返回的就theList1, 这个theList1就是最终要返回的对象,实际上就是ArrayList这个对象
+        //<R> R collect(Supplier<R> supplier,
+        //                  BiConsumer<R, ? super T> accumulator,
+        //                  BiConsumer<R, R> combiner);
+//        List<String> collect = stream1.collect(()-> new ArrayList<>(), (theList, item) ->
+//                theList.add(item), (theList1, theList2) -> theList1.addAll(theList2));
+
+        //使用方法引用来实现
+        List<String> collect = stream1.collect(LinkedList::new,
+                LinkedList::add, LinkedList::addAll);
+        collect.forEach(System.out::println);
+
+    }
+}
+
+```
+13.5 Stream 实例剖析1
+```java
+package com.learn.jdk.chapter17;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+/**
+ * chapter17
+ * @ClassName: StreamDemo5
+ * @Description: Stream 实例剖析
+ * @Author: lin
+ * @Date: 2020/1/2 8:45
+ * History:
+ * @<version> 1.0
+ */
+public class StreamDemo5 {
+    public static void main(String[] args) {
+        Stream<String> stream = Stream.of("hello", "world", "lin");
+        // 这里使用Collectors.toCollection(Supplier<C> collectionFactory)
+        // 这里可以自定义转换成相应的集合
+//        List<String> list = stream.collect(Collectors.toCollection(ArrayList::new));
+//        list.forEach(System.out::println);
+
+        // 转换成TreeSet
+//        Set<String> set = stream.collect(Collectors.toCollection(TreeSet::new));
+//        System.out.println(set.getClass());
+//        set.forEach(System.out::println);
+
+        //3.将stream中字符串，拼接成一个字符输出出来,
+        // Collectors.joining() 一个接着一个拼接
+        String str = stream.collect(Collectors.joining()).toString();
+        System.out.println("拼接字符串======"+str);
+    }
+}
+
+```
+13.6 Stream 实例剖析2
+```java
+package com.learn.jdk.chapter17;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+/**
+ * @ClassName: StreamDemo6
+ * @Description: Stream 实例剖析
+ * @Author: lin
+ * @Date: 2020/1/2 9:13
+ * History:
+ * @<version> 1.0
+ */
+public class StreamDemo6 {
+    public static void main(String[] args) {
+        // 将集合中元素转换成大写
+//        List<String> list = Arrays.asList("hello", "world", "lin", "stream");
+//        System.out.println(list.stream()
+//                .map(String::toUpperCase)
+//                .collect(Collectors.toList()));
+//        System.out.println("-------------");
+
+        // 2.每个数字的平方，然后在打印出来
+//        List<Integer> list1 = Arrays.asList(2, 3, 4, 6, 7);
+//        System.out.println("每个数的平方========="+list1.stream().map(item -> item * item)
+//                .collect(Collectors.toList()));
+
+        System.out.println("--------------------");
+
+        //3.使用flatMap, 将下面的集合乘方 之后，作为整体输入出来 ，
+        // 也就是形成一个list
+        Stream<List<Integer>> stream = Stream.of(Arrays.asList(1, 2, 3),
+                 Arrays.asList(4, 5, 6));
+        stream.flatMap(Collection::stream)
+                .map(item -> item * item).forEach(System.out::println);
+
+
+    }
+}
+
+```
+13.7  Stream.generate() 方法使用，
+Stream.iterate() 使用,如果不加限制那么就会产生无限流
+```java
+package com.learn.jdk.chapter17;
+
+import java.util.IntSummaryStatistics;
+import java.util.UUID;
+import java.util.stream.Stream;
+
+/**
+ * @ClassName: StreamDemo7
+ * @Description: 1. Stream.generate() 方法使用
+ * @Author: lin
+ * @Date: 2020/1/2 10:02
+ * History:
+ * @<version> 1.0
+ */
+public class StreamDemo7 {
+    public static void main(String[] args) {
+        //1. Stream.generate() 方法使用
+//        Stream<String> stream = Stream.generate(UUID.randomUUID()::toString);
+        // stream.findFirst() 返回流里面的第一个元素。
+        // 为什么返回Optional，是为了避免NPE(空指针)
+        // System.out.println(stream.findFirst().get());
+//        stream.findFirst().ifPresent(System.out::println);
+
+        // 2. Stream.iterate() 使用,如果不加限制那么就会产生无限流
+        // 加上面limit就表示限制产生6个
+        // 结果 1,3,5,7,9, 11
+//        Stream.iterate(1, item -> item + 2)
+//                .limit(6).forEach(System.out::println);
+        // 找出该流中大于2的元素，然后将每个元素乘以2, 然后忽略掉流中的前两个元素,
+        // 然后再取出流中的前两个元素，最后求出流中元素的总和。
+//        System.out.println("求和==========" + Stream.iterate(1, item -> item + 2).limit(6)
+//                .filter(ite -> ite > 2)
+//                .map(ite -> ite * 2)
+//                .skip(2)
+//                .limit(2).reduce(0, Integer::sum));
+        //第二种方式 使用mapToInt(), 将其转换为int, 如果使用map()那么里面会有一个自动拆箱和装箱的操作，
+        // 这个转换会有一点点的性能损耗，所以jdk它会去避免这些损耗，因此提供了针对特定的原生类型 mapToInt()
+        // 所以这里使用mapToInt()
+
+        Stream<Integer> stream1 = Stream.iterate(1, item -> item + 2).limit(6);
+//        System.out.println(stream1.filter(item -> item > 2)
+//                .mapToInt(ite -> ite * 2)
+//                .skip(2)
+//                .limit(2).sum());
+
+        // 这种方法是推荐使用的写法
+        // 找出流中最小的元素
+        // min() 方法返回的是Optional,因为这样更好的去规避空指针，
+        // 而sum()返回的是int,就算stream中没有元素，他也只是返回 0.
+        // 所以这就是这两种的区别
+//         stream1.filter(item -> item > 2)
+//                .mapToInt(ite -> ite * 2)
+//                .skip(2)
+//                .limit(2).min().ifPresent(System.out::println);
+         
+         //3.使用summaryStatistics()方法
+//         IntSummaryStatistics intSummaryStatistics = stream1.filter(item -> item > 2)
+//                .mapToInt(ite -> ite * 2)
+//                .skip(2)
+//                .limit(2).summaryStatistics();
+//         System.out.println(intSummaryStatistics.getMin());
+//         System.out.println(intSummaryStatistics.getCount());
+//         System.out.println(intSummaryStatistics.getMax());
+
+         //4.stream不能重复使用, 下面的的代码会报错,因为stream1.filter()会产生一个新的stream,
+         //而 strem1.distinct 又重复使用了原来的stream1, 所以会报错
+//           System.out.println(stream1);
+//           System.out.println(stream1.filter(item -> item > 2));
+//           System.out.println(stream1.distinct());
+
+         //5.下面的方式可以 避免上面重复使用stream问题
+         System.out.println(stream1);
+         Stream<Integer> stream2 = stream1.filter(item -> item > 2);
+         System.out.println(stream2);
+         Stream<Integer> stream3 = stream2.distinct();
+         System.out.println(stream3);
+
+    }
+}
+
+```
+13.8 
+```java
+package com.learn.jdk.chapter17;
+
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * @ClassName: StreamDemo8
+ * @Description:
+ * @Author: lin
+ * @Date: 2020/1/2 13:59
+ * History:
+ * @<version> 1.0
+ */
+public class StreamDemo8 {
+    public static void main(String[] args) {
+        List<String> list = Arrays.asList("hello", "world", "lin");
+        // 将集合中元素的首字母转换成大写，其他的字母不变
+        //1.打印
+//        list.stream().map(item ->
+//                item.substring(0,1).toUpperCase() + item.substring(1))
+//                .forEach(System.out::println);
+
+        //2.下面的方式 不会打印出东西，因为没有终止操作
+        //如果在程序的下面 加上forEach 就可以有数据打印出了
+         list.stream().map(item -> {
+               String result = item.substring(0,1).toUpperCase() + item.substring(1);
+               System.out.println("t");
+               return result;
+         });
+    }
+}
+
+```
+13.8 IntStream和 distinct
+```java
+package com.learn.jdk.chapter17;
+
+import java.util.stream.IntStream;
+
+/**
+ * @ClassName: StreamDemo9
+ * @Description:
+ * @Author: lin
+ * @Date: 2020/1/2 14:19
+ * History:
+ * @<version> 1.0
+ */
+public class StreamDemo9 {
+    public static void main(String[] args) {
+        // 下面操作是不会结束的。是因为distinct 只是去重，而前面的iterate 一直返回0,1,
+        // 没有一个限定范围
+//        IntStream.iterate(0, i -> (i + 1) % 2)
+//                .distinct()
+//                .limit(6)
+//                .forEach(System.out::println);
+
+        // 该为这种方式就可以了, 限定流产生6个元素，再去重
+        IntStream.iterate(0, i -> (i + 1) % 2)
+                .limit(6).distinct().forEach(System.out::println);
+    }
+}
+```
+13.9 stream的短路和并发流
+```java
+package com.learn.jdk.chapter20;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * chapter 20
+ * @ClassName: SteamDemo10
+ * @Description: stream的短路和并发流
+ * @Author: lin
+ * @Date: 2020/1/2 16:29
+ * History:
+ * @<version> 1.0
+ */
+public class SteamDemo10 {
+    public static void main(String[] args) {
+        List<String> list = new ArrayList<>(5000000);
+        int count = 5000000;
+        for (int i = 0; i < count; i++) {
+             list.add(UUID.randomUUID().toString());
+        }
+        System.out.println("开始排序");
+        // 纳秒
+        long startTime = System.nanoTime();
+        // 串行流
+//        list.stream().sorted().count();
+        // 开始排序
+        //排序耗时:6787
+
+        // 并行流
+        list.parallelStream().sorted().count();
+        //开始排序
+        //排序耗时:3782
+
+        long endTime = System.nanoTime();
+
+        long millis = TimeUnit.NANOSECONDS.toMillis(endTime - startTime);
+
+        System.out.println("排序耗时:" + millis);
+    }
+}
+```
+13.10 stream().mapToInt()
+```java
+package com.learn.jdk.chapter20;
+
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * @ClassName: StreamDemo11
+ * @Description:
+ * @Author: lin
+ * @Date: 2020/1/2 16:56
+ * History:
+ * @<version> 1.0
+ */
+public class StreamDemo11 {
+    public static void main(String[] args) {
+        List<String> list = Arrays.asList("hello", "world", "hello world");
+        //1、打印这个列表中 长度为5的第一个单词, 并且把长度打印出来
+
+//        list.stream().mapToInt(item -> item.length()).filter(length -> length == 5)
+//                .findFirst().ifPresent(System.out::println);
+        // 如果长度没有5的，那么打印出来的是空的
+
+        //2、这种方式也可以
+//        list.stream().mapToInt(item -> item.length()).filter(length -> length == 5)
+//                .limit(1).forEach(it -> System.out.println(it));
+
+        //3、
+        // Stream 可以看作为一个容器，这个容器存放的是对每个元素的操作
+        // mapToInt是一种操作, filter是一种操作。
+        // 比如说对流的处理 如迭代，判断、过滤等它会拿着容器中操作 逐个应用到stream中的每一个元素上，
+        // 并且将这些操作串行化，一个元素应用了一个操作之后 接着第二个操作等。
+        // "而不是" 对于一个元素应用完第一个操作，第二个元素应用完第二个操作。
+
+        //注意: stream是存在短路运算的，只要找到符合条件的 后面的就不会再去执行
+        list.stream().mapToInt(item -> {
+          int length = item.length();
+          System.out.println(item);
+          return  length;
+        }).filter(length -> length == 5)
+                .findFirst().ifPresent(System.out::println);
+    }
+}
+
+```
+13.11 stream 和 flatMap
+```java
+package com.learn.jdk.chapter20;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * @ClassName: StreamDemo12
+ * @Description:
+ * @Author: lin
+ * @Date: 2020/1/2 17:41
+ * History:
+ * @<version> 1.0
+ */
+public class StreamDemo12 {
+    public static void main(String[] args) {
+        List<String> list = Arrays.asList("hello welcome", "world hello",
+                "hello world hello", "hello welcome");
+        // 找出列表中所有的单词 并进行去重
+
+        // 1、这种方式不对
+//        List<String[]> collect = list.stream().map(item -> item.split(" "))
+//                .distinct().collect(Collectors.toList());
+//        collect.forEach(item -> Arrays.asList(item).forEach(System.out::println));
+
+
+        // 2、下面使用flatMap
+        //  Arrays::stream(T[] array) 接收一个数组的 返回一个stream对象。
+        // flatMap 将多个中间的stream合并成一个stream.
+        List<String> result = list.stream().map(item -> item.split(" "))
+                .flatMap(Arrays::stream).distinct()
+                .collect(Collectors.toList());
+        result.forEach(System.out::println);
+    }
+}
+
+```
+13.12 stream分组与分区详解
+```java
+package com.learn.jdk.chapter21;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * chapter21
+ * @ClassName: StreamDemo12
+ * @Description: stream分组与分区详解
+ * @Author: lin
+ * @Date: 2020/1/2 21:44
+ * History:
+ * @<version> 1.0
+ */
+public class StreamDemo13 {
+    public static void main(String[] args) {
+        List<String> list = Arrays.asList("Hi", "Hello", "你好,哈哈哈");
+        List<String> list2 = Arrays.asList("zairian", "lisa",
+                "wangle", "zarla");
+        // 将两个集合组合起来，形成各自 人名打招呼。
+
+        List<String> result = list.stream().flatMap(item -> list2.stream().map(item2 -> item + " " + item2)).
+                collect(Collectors.toList());
+        result.forEach(System.out::println);
+    }
+}
+
+```
+14、 stream 和 分组：group by  分区：partition by 
+```java
+package com.learn.jdk.chapter21;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * @ClassName: StreamDemo14
+ * @Description:
+ * @Author: lin
+ * @Date: 2020/1/2 22:17
+ * History:
+ * @<version> 1.0
+ */
+public class StreamDemo14 {
+    public static void main(String[] args) {
+        StudentTest test1 = new StudentTest("zaneta", 100, 20);
+        StudentTest test2 = new StudentTest("lise", 80, 20);
+        StudentTest test3 = new StudentTest("wadge", 90, 30);
+        StudentTest test4 = new StudentTest("zeal", 70, 40);
+
+        List<StudentTest> list = Arrays.asList(test1, test2, test3, test4);
+
+        // 根据名称分组
+//        Map<String, List<StudentTest>> map = list.stream().
+//                collect(Collectors.groupingBy(StudentTest::getName));
+//        System.out.println(map);
+        //根据分数分组
+//        Map<Integer, List<StudentTest>> collect = list.stream().
+//                collect(Collectors.groupingBy(StudentTest::getScore));
+//        System.out.println(collect);
+
+        //根据名字分组，然后 count
+//        Map<String, Long> collect2 = list.stream().
+//                collect(Collectors.groupingBy(StudentTest::getName, Collectors.counting()));
+//        System.out.println(collect2);
+
+        //根据名称分组，再求分数的平均
+        Map<String, Double> collect3 = list.stream().
+                collect(Collectors.groupingBy(StudentTest::getName,
+                        Collectors.averagingLong(StudentTest::getScore)));
+        System.out.println(collect3);
+
+        // 分区partition, 就是Boolean值，要么true, 要么false
+        Map<Boolean, List<StudentTest>> listMap = list.stream().
+                collect(Collectors.partitioningBy(studentTest -> studentTest.getScore() >= 90));
+        System.out.println(listMap);
+
+
+        // 分组：group by
+        // 分区：partition by (结果只会有两个分区，在程序语言中表达就是true 和false. 分区是分组的一种特例)
+    }
+}
+
+```
+14.1 通过源码分析 ,深入理解stream, collect等
+```java
+package com.learn.jdk.chapter22;
+
+import java.util.Arrays;
+import java.util.List;
+import static java.util.stream.Collectors.*;
+
+/**
+ * chapter22
+ * @ClassName: StreamTest1
+ * @Description: 通过源码分析 ,深入理解stream, collect等
+ * @Author: lin
+ * @Date: 2020/1/3 8:53
+ * History:
+ * @<version> 1.0
+ */
+public class StreamTest1 {
+    public static void main(String[] args) {
+        //
+        StudentTe t1 = new StudentTe("zings", 70);
+        StudentTe t2 = new StudentTe("lisa", 90);
+        StudentTe t3 = new StudentTe("wang", 100);
+        StudentTe t4 = new StudentTe("zarla", 90);
+
+        List<StudentTe> studentTes = Arrays.asList(t1, t2, t3, t4);
+
+        // 静态导入 Collectors类
+        // 所以这里显示Collectors.toList()
+//        List<StudentTe> studentTeList = studentTes.stream().
+//                collect(toList());
+//        studentTeList.forEach(System.out::println);
+
+//        System.out.println("---------------------");
+//
+//        System.out.println("count: " + studentTes.stream().collect(counting()));
+//        System.out.println("count: " + studentTes.stream().count());
+    }
+
+}
+
+```
+14.2、 收集器用法详解与多分组和分区
+```java
+package com.learn.jdk.chapter25;
+
+import com.learn.jdk.chapter22.StudentTe;
+
+import java.util.*;
+
+import static java.util.stream.Collectors.*;
+
+/**
+ * chapter25
+ * @ClassName: StreamTest2
+ * @Description: 收集器用法详解与多分组和分区
+ * @Author: lin
+ * @Date: 2020/1/3 16:21
+ * History:
+ * @<version> 1.0
+ */
+public class StreamTest2 {
+    public static void main(String[] args) {
+
+        // 测试
+        StudentTe  te1 = new StudentTe("zings", 74);
+        StudentTe  te2 = new StudentTe("lisa", 74);
+        StudentTe  te3 = new StudentTe("wang", 100);
+        StudentTe  te4 = new StudentTe("zarla", 80);
+        StudentTe  te5 = new StudentTe("zarla", 80);
+
+        List<StudentTe> studentTes = Arrays.asList(te1, te2, te3, te4, te5);
+        //求出分数最低的学生
+
+        studentTes.stream().collect(minBy(Comparator.comparingInt(StudentTe::getScore))).
+                ifPresent(System.out::println);
+        studentTes.stream().collect(maxBy(Comparator.comparingInt(StudentTe::getScore))).
+                ifPresent(System.out::println);
+        System.out.println(studentTes.stream().collect(averagingInt(StudentTe::getScore)));
+
+        System.out.println(studentTes.stream().collect(summingInt(StudentTe::getScore)));
+        // 求出摘要信息
+        IntSummaryStatistics intSummaryStatistics = studentTes.stream().collect(summarizingInt(StudentTe::getScore));
+        System.out.println(intSummaryStatistics);
+
+        System.out.println("-----------------------");
+        //拼接名字
+        System.out.println(studentTes.stream().
+                map(StudentTe::getName).collect(joining()));
+        //joining(", ")
+        System.out.println(studentTes.stream().
+                map(StudentTe::getName).collect(joining(", ")));
+        //加入前缀和后缀
+        System.out.println(studentTes.stream().
+                map(StudentTe::getName).collect(joining(", ", "<begin> ", " <end>")));
+
+        System.out.println("-----------------------");
+        // 分组， 第一次分组外层key 是一个integer类型，然后在对第一次分组的进行第二次分组
+        // 第二次分组key是String类型 ,value是 List<StudentTe>.
+        Map<Integer, Map<String, List<StudentTe>>> collect = studentTes.stream().
+                collect(groupingBy(StudentTe::getScore, groupingBy(StudentTe::getName)));
+        System.out.println("分组= " + collect);
+
+        System.out.println("----------------------------");
+        // 分区
+        Map<Boolean, List<StudentTe>> collect1 = studentTes.stream().
+                collect(partitioningBy(studentTe -> studentTe.getScore() > 80));
+        System.out.println("分区: "+ collect1);
+        // 在根据分数大于80，进行再次分区。
+
+        Map<Boolean, Map<Boolean, List<StudentTe>>> mapMap =
+        studentTes.stream().
+                collect(partitioningBy(studentTe -> studentTe.getScore() > 80,
+                        partitioningBy(studentTe -> studentTe.getScore() > 90)));
+        //返回的结果就是嵌套的了
+        System.out.println("再分区: " + mapMap);
+
+        System.out.println("---------------------");
+        // 求出每个分区中，学生的个数
+        Map<Boolean, Long> longMap = studentTes.stream().
+                collect(partitioningBy(studentTe -> studentTe.getScore() > 80, counting()));
+        System.out.println("求出每个分区中，学生的个数 " + longMap);
+
+        // 根据名字分组，在得到学生的分数
+        // 使用collectingAndThen()去收集最小值，收集完之后 然后在从里面把它包含的值取出来，
+        // 这个get一定是有值的，这是因为groupingBy()分组. 每一组中是一定有数据的。
+        Map<String, StudentTe> collect2 = studentTes.stream().
+                collect(groupingBy(StudentTe::getName,
+                        collectingAndThen(minBy(Comparator.comparingInt(StudentTe::getScore)),
+                                Optional::get)));
+        System.out.println("分组: " + collect2);
+    }
+}
+
+```
+14.3 Comparator 详解与类型推断
+```java
+package com.learn.jdk.chapter26;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * chapter26
+ * @ClassName: ComparatorDemo
+ * @Description: Comparator 详解与类型推断
+ * @Author: lin
+ * @Date: 2020/1/5 10:58
+ * History:
+ * @<version> 1.0
+ */
+public class ComparatorDemo {
+    public static void main(String[] args) {
+        List<String> list = Arrays.asList("nihao", "hello", "world", "welcome");
+        //根据字母进行升序的排序
+//        Collections.sort(list);
+//        System.out.println(list);
+        // 字符串长度
+//        Collections.sort(list, (item1 , item2) -> item1.length() - item2.length());
+//        Collections.sort(list, (item1 , item2) -> item2.length() - item1.length());
+//        System.out.println(list);
+
+        // 使用方法引用, 降序
+//        Collections.sort(list, Comparator.comparingInt(String::length).reversed());
+//        System.out.println(list);
+
+        //这里使用item -> item.length()报错，
+        // lambda表达式的参数推断, 如果编译器不能推断类型是，必须要明确指定参数类型
+        // 这里推断 item 的类型 是根据 comparingInt(ToIntFunction<? super T> keyExtractor)方法来进行的，
+        // 而这个方法里面的泛型T 是字符串类型，而? 是 T的父类，或者父类的父类。
+        // 所以这里无法去推断类型，只能是给一个同样的类型Object。
+        // 加上reversed()方法会影响类型的推断。
+//        Collections.sort(list, Comparator.comparingInt((String item) -> item.length()).reversed());
+//        System.out.println(list);
+
+        //注意： 【这个编译报错】，
+        // Collections.sort(list, Comparator.comparingInt((Boolean item) -> 1).reversed());
+
+
+        //先按照字符串的长度，然后在按照字母的升序顺序排序(这里使用thenComparing)，使用jdk的不区分大小写
+        //Collections.sort(list, Comparator.comparingInt(String::length).
+        // thenComparing(String.CASE_INSENSITIVE_ORDER));
+
+
+//        Collections.sort(list, Comparator.comparingInt(String::length).
+//                thenComparing((item1, item2) -> item1.toLowerCase().compareTo(item2.toLowerCase())));
+
+        // 方法引用的方式
+//        Collections.sort(list, Comparator.comparingInt(String::length).
+//                thenComparing(Comparator.comparing(String::toLowerCase)));
+
+        //Comparator.comparing()的重载方法， Comparator.reverseOrder 将顺序逆转过来
+//        Collections.sort(list, Comparator.comparingInt(String::length).
+//                thenComparing(Comparator.comparing(String::toLowerCase, Comparator.reverseOrder())));
+
+        // 首先根据字符串长度排序升序，再reversed进行降序排序，然后thenComparing是对于前面结果等于0的才去引用thenComparing，
+        // 如果不等于0就不会应用thenComparing，
+        // 将字母转换为小写，再逆序排序
+//        Collections.sort(list, Comparator.comparingInt(String::length).reversed().
+//                thenComparing(Comparator.comparing(String::toLowerCase, Comparator.reverseOrder())));
+        // 输出结果 [welcome, world, nihao, hello]
+
+
+        //thenComparing 比较器的串联
+        // 再加一个thenComparing, 结果还是和上面的一样，为什么呢？
+        // 这是因为在Comparator.comparingInt(String::length).reversed()，
+        // thenComparing 第一次的应用的时候 其中的元素[welcome, nihao, hello, world].这个时候对其后面的三个元素进行比较
+        // 也就是两两比较不会为零， 返回的  res = compare(c1, c2); res 不为零。 所以第二个thenComparing 不会引用到。
+        // 因此结果还是一样的
+        Collections.sort(list, Comparator.comparingInt(String::length).reversed().
+                thenComparing(Comparator.comparing(String::toLowerCase, Comparator.reverseOrder())).
+                thenComparing(Comparator.reverseOrder()));
+        //
+
+        System.out.println(list);
+    }
+}
+
+```
+
+15、扩展BinaryOperator
+```java
+package com.learn.jdk.extension;
+
+import java.util.Comparator;
+import java.util.function.BinaryOperator;
+
+/**
+ * BinaryOperator：
+ * 对两个相同类型的操作数进行的运算, 产生与该操作数相同的类型的结果
+ * 这个是BiFunction的一种具体或者特例, BiFunction接收三个参数,前两个参数是输入参数类型,第三个参数是返回参数类型
+ * @ClassName: BinaryOperatorDemo
+ * @Description:
+ * @Author: lin
+ * @Date: 2019/12/30 10:34
+ * History:
+ * @<version> 1.0
+ */
+public class BinaryOperatorDemo {
+    public static void main(String[] args) {
+       BinaryOperatorDemo binaryOperatorDemo = new BinaryOperatorDemo();
+        //操作本身要符合BinaryOperator 中的apply的定义
+        System.out.println("两数相加====" +binaryOperatorDemo.calculation(2, 3, (v1, v2) -> v1 + v2));
+
+        System.out.println("两数相减====" +binaryOperatorDemo.calculation(2, 3, (v1, v2) -> v1 - v2));
+        System.out.println("两数相乘====" +binaryOperatorDemo.calculation(2, 3, (v1, v2) -> v1 * v2));
+        System.out.println("两数相除====" +binaryOperatorDemo.calculation(2, 3, (v1, v2) -> v1 / v2));
+
+        // 取出长度小的
+        System.out.println(binaryOperatorDemo.getSort("hello123", "world", (a, b) -> a.length() - b.length()));
+        //上面的可以替换为 Comparator.comparingInt 方式 ,方法引用
+        // binaryOperatorDemo.getSort("hello", "world", Comparator.comparingInt(String::length));
+
+        // 首字母在ascii码 上排前的就是小的
+        System.out.println(binaryOperatorDemo.getSort("hello", "world", (a, b) -> a.charAt(0) - b.charAt(0)));
+    }
+
+    /**
+     * 操作本身是一种抽象
+     * @param a
+     * @param b
+     * @param binaryOperator
+     * @return
+     */
+    public int calculation(int a, int b ,  BinaryOperator<Integer> binaryOperator){
+        return binaryOperator.apply(a, b);
+    }
+
+    public String getSort(String a, String b, Comparator<String> comparator){
+        return BinaryOperator.minBy(comparator).apply(a, b);
+    }
+}
+
+```
+
+16、内部迭代和外部迭代本质
 ```
 stream 和sql 语句很类似
 select name from student where age > 23 and address ="shanghai" order by age desc;
@@ -1252,12 +2421,13 @@ fork join
 流与迭代器类似的一点是: 流是无法重复使用或消费的。
 
 ```
-21、stream分组和分区
+17、stream分组和分区
 ```
 分组：group by
 分区：partition by (结果只会有两个分区，在程序语言中表达就是true 和false)
 ```
-22、深入源码分析 collect
+
+18、深入源码分析 collect
 ```
 1、collect 收集器
 2、Collector 作为collect方法的参数
@@ -1337,7 +2507,7 @@ public interface BiConsumer<T, U>
 
 ```
 
-25、收集器用法详解和多级分组合分区
+19、收集器用法详解和多级分组合分区
 ```
 Collectors 类是一个辅助类，可以认为是一个工厂。它的作用就是向开发者提供常见的Collector实现。
 并且Collectors的构造方法被设计为私有的，从而杜绝你创建对象的可能性. 
@@ -1356,8 +2526,354 @@ public static <T>
 
 ```
 
+20、自定义收集器
+```java
+package com.learn.jdk.chapter28;
+
+import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.BinaryOperator;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collector;
+
+import static java.util.stream.Collector.Characteristics.IDENTITY_FINISH;
+import static java.util.stream.Collector.Characteristics.UNORDERED;
+
+/**
+ * chapter28
+ * @ClassName: CustomizeCollector
+ * @Description: 自定义 收集器
+ * 这里Collector<T, Set<T>, Set<T>>
+ *      中 第一个去遍历的流当中每一个元素类型设置为T类型
+ *      第二个 中间的结果类型Set<T>,
+ *      第三个返回的最终结果类型 这里设定和第二个类型一样
+ * @Author: lin
+ * @Date: 2020/1/8 13:48
+ * History:
+ *
+ * @<version> 1.0
+ */
+public class CustomizeCollector<T> implements Collector<T, Set<T>, Set<T>> {
+    /**
+     * 用于返回中间收集的结果容器
+     *
+     * @return
+     */
+    @Override
+    public Supplier<Set<T>> supplier() {
+        System.out.println("supplier invoked!");
+        // ()-> new HashSet<>()
+        // 这个返回的是中间结果容器的一个初始化对象，
+        // 后面是不断的往这个结果容器中追加内容
+        return HashSet<T>::new;
+    }
+
+    /**
+     * 累加器，不断的从流中遍历元素，将这个元素从<A,T>  T加A当中
+     * @return
+     */
+    @Override
+    public BiConsumer<Set<T>, T> accumulator() {
+        System.out.println("accumulator invoked!");
+        // :: 指定到BiConsumer, add实际上对应的BiConsumer中的accept(T t, U u)。
+        return Set<T>::add;
+        // 这个和上面的等价
+        //return (item1, item2) -> item1.add(item2);
+
+        // 这种写法不可以，不能编译,
+        // Set<T>本身是接口，HashSet是Set的一个实现，当然也有add.
+        // 但是为什么不能使用HashSet<T>::add
+        // 这是因为上面的Supplier<<Set<T>> 返回的是一个中间结果容器
+        // 并且这个方法是往这个中间结果容器中添加内容，
+        // 当这个返回的类型和中间结果返回的容器类型不一致那么就不允许这么做
+        // 但是如果改为Set<T>这个就符合Set<T>接口的要求，
+        // 因此这里就不能使用一个具体类型的set. 要使用给的泛型类型。
+//        return  HashSet<T>::add;
+    }
+
+    /**
+     * 表示对并行流，多个线程所执行的部分结果合并到一起
+     * @return
+     */
+    @Override
+    public BinaryOperator<Set<T>> combiner() {
+        System.out.println("combiner invoked!");
+        return (set1, set2) -> {
+            set1.addAll(set2);
+            return  set1;
+        };
+    }
+
+    /**
+     * 是一个可选的操作，根据实际情况提供一个实现。
+     * finisher是一个完成器，将结果Function<A, R> , 结果A转换成R ，
+     * 在有些时候这个A就是R
+     * 1、执行是在combiner 后面执行，
+     * 将所有的结果都合并到一起，如果是单线程就不用合并，
+     * 合并完之后去返回一个最终类型，
+     * 在这个程序中最终的结果类型是一样的，
+     * 就是我们只需把中间的累加之后的结果容器返回给用户就可以了.
+     *
+     * 2、除非这个累加完之后得到的结果容器跟你想要得到的对象类型是不一致的，
+     * 那么finisher函数你必须要显示的正确的把它实现出来
+     * @return
+     */
+    @Override
+    public Function<Set<T>, Set<T>> finisher() {
+        System.out.println("finisher invoked!");
+//        return ite -> ite;
+        // identity返回的就是一个函数，这个函数总是把它的输入参数给原封不动的返回
+        return  Function.identity();
+    }
+
+    /**
+     * 返回一个set对象，Characteristics表示当收集器的一个特性，这个特性就是三个枚举值
+     * @return
+     */
+    @Override
+    public Set<Characteristics> characteristics() {
+        System.out.println("characteristics invoked!");
+        //返回一个集合，这个集合标识着当前收集器的很多特性
+        // 所以返回一个不可变的集合
+        return Collections.unmodifiableSet(
+                EnumSet.of(IDENTITY_FINISH,UNORDERED));
+    }
 
 
+    public static void main(String[] args) {
+        List<String> list = Arrays.asList("hello", "world", "welcome");
+        Set<String> set = list.stream().collect(new CustomizeCollector<>());
+        System.out.println(set);
+    }
+//运行结果
+//supplier invoked!
+//accumulator invoked!
+//combiner invoked!
+//characteristics invoked!
+//characteristics invoked!
+//[world, hello, welcome]
+    // 运行结果可以从代码的实现类中了解到，在ReferencePipeline中的collect的方法实现中知道
+    // 如果有IDENTITY_FINISH，就会调用finisher,如果没有就不会调用，
+    // 并且在实现类的方法中我们可以知道 在进行强制类型转换时一定要确保成功因为在源码中根本没有去进行验证，
+//    return collector.characteristics().contains(Collector.Characteristics.IDENTITY_FINISH)
+//               ? (R) container
+//               : collector.finisher().apply(container);
+    // 如果 A和R类型不一样那么转换就会抛出异常。所以这里要注意
+
+
+}
+
+
+```
+20.1 stream 中collect的实现在ReferencePipeline中
+```
+    @Override
+       @SuppressWarnings("unchecked")
+       public final <R, A> R collect(Collector<? super P_OUT, A, R> collector) {
+           A container;
+           if (isParallel()
+                   && (collector.characteristics().contains(Collector.Characteristics.CONCURRENT))
+                   && (!isOrdered() || collector.characteristics().contains(Collector.Characteristics.UNORDERED))) {
+               container = collector.supplier().get();
+               BiConsumer<A, ? super P_OUT> accumulator = collector.accumulator();
+               forEach(u -> accumulator.accept(container, u));
+           }
+           else {
+               container = evaluate(ReduceOps.makeRef(collector));
+           }
+           return collector.characteristics().contains(Collector.Characteristics.IDENTITY_FINISH)
+                  ? (R) container
+                  : collector.finisher().apply(container);
+       }
+
+==========================================================================
+  public static <T, I> TerminalOp<T, I>
+    makeRef(Collector<? super T, I, ?> collector) {
+        Supplier<I> supplier = Objects.requireNonNull(collector).supplier();
+        BiConsumer<I, ? super T> accumulator = collector.accumulator();
+        BinaryOperator<I> combiner = collector.combiner();
+        class ReducingSink extends Box<I>
+                implements AccumulatingSink<T, I, ReducingSink> {
+            @Override
+            public void begin(long size) {
+                state = supplier.get();
+            }
+
+            @Override
+            public void accept(T t) {
+                accumulator.accept(state, t);
+            }
+
+            @Override
+            public void combine(ReducingSink other) {
+                state = combiner.apply(state, other.state);
+            }
+        }
+        return new ReduceOp<T, I, ReducingSink>(StreamShape.REFERENCE) {
+            @Override
+            public ReducingSink makeSink() {
+                return new ReducingSink();
+            }
+
+            @Override
+            public int getOpFlags() {
+                return collector.characteristics().contains(Collector.Characteristics.UNORDERED)
+                       ? StreamOpFlag.NOT_ORDERED
+                       : 0;
+            }
+        };
+    }
+
+```
+
+20.2 castingIdentity的说明，给定一个输入直接就把他强制转换成结果
+```
+
+   @SuppressWarnings("unchecked")
+    private static <I, R> Function<I, R> castingIdentity() {
+        return i -> (R) i;
+    }
+```
+20.3 Collector中IDENTITY_FINISH的解释
+
+```java
+    /**
+     * Indicates that the finisher function is the identity function and
+     * can be elided.  If set, it must be the case that an unchecked cast
+     * from A to R will succeed.
+表示finisher函数就是identity函数并且可以被省略掉，如果设置了，
+那么必须是未检出的转换从A到R的类型转换一定是成功的
+IDENTITY_FINISH
+     */
+        
+```
+
+21、自定义收集器深度剖析与并行流陷阱
+```java
+package com.learn.jdk.chapter29;
+
+import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.BinaryOperator;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collector;
+
+import static java.util.stream.Collector.Characteristics.*;
+import static java.util.stream.Collectors.groupingBy;
+
+/**
+ * chapter29
+ * @ClassName: CustomizeCollector2
+ * @Description: 自定义收集器深度剖析与并行看流陷阱
+ * 定义类的条件：
+ * 输入：Set<String>
+ * 输出：Map<String,String>
+ * @Author: lin
+ * @Date: 2020/1/8 16:25
+ * History:
+ * @<version> 1.0
+ */
+public class CustomizeCollector2<T> implements Collector<T, Set<T>, Map<T,T>> {
+    @Override
+    public Supplier<Set<T>> supplier() {
+        System.out.println("supplier invoked!");
+        return HashSet::new;
+    }
+
+    @Override
+    public BiConsumer<Set<T>, T> accumulator() {
+        System.out.println("accumulator invoked!");
+        // set 表示中间结果容器类型
+        // item 表示stream中下一个元素的类型
+        return (set, item) -> {
+            // 一共10元素，按照顺序执行，要往中间容器中累加10个，那么这个方法就会被调用10次
+            System.out.println("accumulator: " +set+", " + Thread.currentThread().getName());
+            set.add(item);
+        };
+    }
+
+    /**
+     * combiner只有在并行stream时才会被调用，
+     * 如果是串行stream是不会被调用的，因为串行流只有一个线程，
+     * 这个一个线程会执行所以的任务，所以不需要合并的操作，这个时候combiner是不会被调用的
+     * @return
+     */
+    @Override
+    public BinaryOperator<Set<T>> combiner() {
+        System.out.println("combiner invoked!");
+        return (set1, set2) -> {
+            set1.addAll(set2);
+            return  set1;
+        };
+    }
+
+    /**
+     * finisher的调用是, 在没有IDENTITY_FINISH时才会真正调用
+     * @return
+     */
+    @Override
+    public Function<Set<T>, Map<T, T>> finisher() {
+        System.out.println("finisher invoked!");
+        //转换，如果类型不一致那么就是抛出异常
+        return set -> {
+//            Map<T,T> map = new HashMap<>(16);
+            //排序
+            Map<T,T> map = new TreeMap<>();
+            set.stream().forEach(item -> map.put(item, item));
+            return map;
+        };
+    }
+
+    /**
+     * 收集器有什么特性，实际上就是你赋予的。
+     * @return
+     */
+    @Override
+    public Set<Characteristics> characteristics() {
+        System.out.println("characteristics invoked!");
+        return Collections.unmodifiableSet(
+                // IDENTITY_FINISH
+                EnumSet.of(UNORDERED,CONCURRENT));
+
+//        return Collections.unmodifiableSet(
+//                // IDENTITY_FINISH
+//                EnumSet.of(UNORDERED,IDENTITY_FINISH));
+        // 这里先不加IDENTITY_FINISH, 其运行结果可以得到结果，
+        // 如果这里加上了IDENTITY_FINISH,那么在finisher进行转换的时候 会怎样呢？
+        // 加上之后 就会报错，Exception in thread "main" java.lang.ClassCastException: java.util.HashSet cannot be cast to java.util.Map,
+        // 也就说在有IDENTITY_FINISH是 类型转换的时候报错了,因为中间容器类型和返回类型不一致
+
+
+        //  return Collections.unmodifiableSet(
+        //                // IDENTITY_FINISH
+        //                EnumSet.of(UNORDERED,CONCURRENT));
+        //思考:这里如果加上了CONCURRENT,那么在并行流情况下执行会出现错误。这个出现错误的原因是什么？
+        //错误: Exception in thread "main" java.util.ConcurrentModificationException: java.util.ConcurrentModificationException
+        // 原因:
+    }
+
+    public static void main(String[] args) {
+        int count = 100;
+        for (int i = 0; i <count; i++) {
+            List<String> list = Arrays.asList("hello", "world", "welcome","zairian","lisa",
+                    "wadge","zambia","cc","b","d");
+            Set<String> set = new HashSet<>();
+            set.addAll(list);
+
+            System.out.println("set" + set);
+//        Map<String, String> map = set.stream().collect(new CustomizeCollector2<>());
+            //并行流
+            Map<String, String> map = set.parallelStream().collect(new CustomizeCollector2<>());
+            System.out.println(map);
+        }
+
+    }
+}
+
+
+```
 
 
 
