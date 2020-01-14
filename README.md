@@ -2930,6 +2930,227 @@ public class CustomizeCollector2<T> implements Collector<T, Set<T>, Map<T,T>> {
 
 ```
 22、Collectors工厂类源码分析与实战
+```
+收集器:
+对于Collectors静态工厂类来说,其实现一共分为两种情况:
+1、通过CollectorImpl来实现。
+2、通过reducing方法来实现, reducing方法本身有通过CollectorImpl实现的。
+
+
+static class CollectorImpl<T, A, R> implements Collector<T, A, R> {
+        private final Supplier<A> supplier;
+        private final BiConsumer<A, T> accumulator;
+        private final BinaryOperator<A> combiner;
+        private final Function<A, R> finisher;
+        private final Set<Characteristics> characteristics;
+
+        CollectorImpl(Supplier<A> supplier,
+                      BiConsumer<A, T> accumulator,
+                      BinaryOperator<A> combiner,
+                      Function<A,R> finisher,
+                      Set<Characteristics> characteristics) {
+            this.supplier = supplier;
+            this.accumulator = accumulator;
+            this.combiner = combiner;
+            this.finisher = finisher;
+            this.characteristics = characteristics;
+        }
+
+        CollectorImpl(Supplier<A> supplier,
+                      BiConsumer<A, T> accumulator,
+                      BinaryOperator<A> combiner,
+                      Set<Characteristics> characteristics) {
+            this(supplier, accumulator, combiner, castingIdentity(), characteristics);
+        }
+
+        @Override
+        public BiConsumer<A, T> accumulator() {
+            return accumulator;
+        }
+
+        @Override
+        public Supplier<A> supplier() {
+            return supplier;
+        }
+
+        @Override
+        public BinaryOperator<A> combiner() {
+            return combiner;
+        }
+
+        @Override
+        public Function<A, R> finisher() {
+            return finisher;
+        }
+
+        @Override
+        public Set<Characteristics> characteristics() {
+            return characteristics;
+        }
+    }
+
+
+
+/**
+     * Returns a {@code Collector} that accumulates the input elements into a
+     * new {@code Collection}, in encounter order.  The {@code Collection} is
+     * created by the provided factory.
+     *
+     * @param <T> the type of the input elements
+     * @param <C> the type of the resulting {@code Collection}
+     * @param collectionFactory a {@code Supplier} which returns a new, empty
+     * {@code Collection} of the appropriate type
+     * @return a {@code Collector} which collects all the input elements into a
+     * {@code Collection}, in encounter order
+     */
+    这个方法更为广泛和通用
+    public static <T, C extends Collection<T>>
+    Collector<T, ?, C> toCollection(Supplier<C> collectionFactory) {
+        对于这个方法必须要接收一个参数collectionFactory, 因为这个参数用于指定中间结果容器以及最终所返回的结果的集合类型,所以需要自己提供
+        如果要返回一个LinkList那么就传入一个LinkList::new 那么就可以用这个方法
+        return new CollectorImpl<>(collectionFactory, Collection<T>::add,
+                                   (r1, r2) -> { r1.addAll(r2); return r1; },
+                                   CH_ID);
+    }
+
+    /**
+     * Returns a {@code Collector} that accumulates the input elements into a
+     * new {@code List}. There are no guarantees on the type, mutability,
+     * serializability, or thread-safety of the {@code List} returned; if more
+     * control over the returned {@code List} is required, use {@link #toCollection(Supplier)}.
+     *
+     * @param <T> the type of the input elements
+     * @return a {@code Collector} which collects all the input elements into a
+     * {@code List}, in encounter order
+     */
+    public static <T>
+    Collector<T, ?, List<T>> toList() {
+        //对toList进行分析 
+        // 首先CollectorImpl 实现类中有几个参数,
+         supplier用于生产中间结果容器的 、
+         accumulator累加器、
+         combiner合并器、
+         finisher完成器、
+         characteristics 特性。
+        // 它的实现如下,
+        第一个参数是supplier,然后它用 ArrayList::new 强制的转换为(Supplier<List<T>>)。实际上它也可以这样写ArrayList<T>::new。
+        第二个参数是accumulator累加器, 累积器是不断往中间结果中添加,这里调用List::add方法引用,传进来的第一次参数作为add方法的调用者,第二个参数作为add的参数
+        第三个参数combiner合并器,这里使用lambda表达式(left, right) -> { left.addAll(right); return left; } 这里是将后面的部分结果right添加到第一个left中 然后返回left
+        第四个参数CH_ID是个常量, 这个常量里面定义的是IDENTITY_FINISH,也就是说中间结果类型和最终的结果类型是同一个类型,
+        也就是说toList()方法是不需要finisher的。
+        return new CollectorImpl<>((Supplier<List<T>>) ArrayList::new, List::add,
+                                   (left, right) -> { left.addAll(right); return left; },
+                                   CH_ID);
+    }
+
+
+  /**
+     * Returns a {@code Collector} that accumulates the input elements into a
+     * new {@code Set}. There are no guarantees on the type, mutability,
+     * serializability, or thread-safety of the {@code Set} returned; if more
+     * control over the returned {@code Set} is required, use
+     * {@link #toCollection(Supplier)}.
+     *
+     * <p>This is an {@link Collector.Characteristics#UNORDERED unordered}
+     * Collector.
+     *
+     * @param <T> the type of the input elements
+     * @return a {@code Collector} which collects all the input elements into a
+     * {@code Set}
+     */
+     // toSet()也是一种特化版本
+    public static <T>
+    Collector<T, ?, Set<T>> toSet() {
+        // 首先中间结果容器是 set类型, 累加器是 Set::add, 
+        然后合并器(left, right) -> { left.addAll(right); return left; }
+        characteristics 特性是UNORDERED和IDENTITY_FINISH, 这说明是无序的同时 中间结果类型和最终结果类型是一致的
+      
+        return new CollectorImpl<>((Supplier<Set<T>>) HashSet::new, Set::add,
+                                   (left, right) -> { left.addAll(right); return left; },
+                                   CH_UNORDERED_ID);
+    }
+
+
+/**
+     * Returns a {@code Collector} that concatenates the input elements into a
+     * {@code String}, in encounter order.
+     *
+     * @return a {@code Collector} that concatenates the input elements into a
+     * {@code String}, in encounter order
+     */
+      将多个字符串拼接,不用任何的分割符 分割
+    public static Collector<CharSequence, ?, String> joining() {
+        //首先new CollectorImpl(), 三个参数
+         第一个是流中元素类是CharSequence
+         第二个是中间结果容器 StringBuilder
+         第三个是结果String, 这里可以知道StringBuilder和String类型不一样,中间结果类型和最终结果类型是不一致的。
+         所以要使用finisher
+        实现 首先 
+         第一个参数 supplier 调用StringBuilder::new,
+         第二个参数 accumulator累加器 StringBuilder::append 使用append不断往StringBuilder追加
+         第三个参数 combiner合并器 (r1, r2) -> { r1.append(r2); return r1; } r2不断的append到r1中 然后返回r1,
+         第四个参数 finisher完成器 StringBuilder::toString 这里要使用的原因是类型不一致 所以相当于把StringBuilder转换成字符串,
+         第五个参数 characteristics 特性CH_NOID 表示三个特性都不具备。
+        return new CollectorImpl<CharSequence, StringBuilder, String>(
+                StringBuilder::new, StringBuilder::append,
+                (r1, r2) -> { r1.append(r2); return r1; },
+                StringBuilder::toString, CH_NOID);
+    }
+
+
+/**
+     * Returns a {@code Collector} that concatenates the input elements,
+     * separated by the specified delimiter, in encounter order.
+     *
+     * @param delimiter the delimiter to be used between each element
+     * @return A {@code Collector} which concatenates CharSequence elements,
+     * separated by the specified delimiter, in encounter order
+     */
+    中间有分割符
+    public static Collector<CharSequence, ?, String> joining(CharSequence delimiter) {
+        return joining(delimiter, "", "");
+    }
+
+
+
+  /**
+     * Adapts a {@code Collector} accepting elements of type {@code U} to one
+     * accepting elements of type {@code T} by applying a mapping function to
+     * each input element before accumulation.
+     *
+     * @apiNote
+     * The {@code mapping()} collectors are most useful when used in a
+     * multi-level reduction, such as downstream of a {@code groupingBy} or
+     * {@code partitioningBy}.  For example, given a stream of
+     * {@code Person}, to accumulate the set of last names in each city:
+     * <pre>{@code
+     *     Map<City, Set<String>> lastNamesByCity
+     *         = people.stream().collect(groupingBy(Person::getCity,
+     *                                              mapping(Person::getLastName, toSet())));
+     * }</pre>
+     *
+     * @param <T> the type of the input elements
+     * @param <U> type of elements accepted by downstream collector
+     * @param <A> intermediate accumulation type of the downstream collector
+     * @param <R> result type of collector
+     * @param mapper a function to be applied to the input elements
+     * @param downstream a collector which will accept mapped values
+     * @return a collector which applies the mapping function to the input
+     * elements and provides the mapped results to the downstream collector
+     */
+   // 这个方法就是映射, 适配一个Collector接收一个U类型的把它适配到一个T类型的, 也就是说这个收集器接收一个类型的你把它映射成另外的一个类型，
+        在累积之前都应用一个映射函数。
+    public static <T, U, A, R>
+    Collector<T, ?, R> mapping(Function<? super T, ? extends U> mapper,
+                               Collector<? super U, A, R> downstream) {
+        BiConsumer<A, ? super U> downstreamAccumulator = downstream.accumulator();
+        return new CollectorImpl<>(downstream.supplier(),
+                                   (r, t) -> downstreamAccumulator.accept(r, mapper.apply(t)),
+                                   downstream.combiner(), downstream.finisher(),
+                                   downstream.characteristics());
+    }
+
+```
 
 
 

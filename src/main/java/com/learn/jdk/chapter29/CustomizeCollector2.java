@@ -102,6 +102,7 @@ public class CustomizeCollector2<T> implements Collector<T, Set<T>, Map<T,T>> {
     @Override
     public Set<Characteristics> characteristics() {
         System.out.println("characteristics invoked!");
+        //返回一个不可变的集合
         return Collections.unmodifiableSet(
                 // IDENTITY_FINISH, CONCURRENT
                 EnumSet.of(UNORDERED));
