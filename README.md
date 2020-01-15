@@ -3150,10 +3150,375 @@ static class CollectorImpl<T, A, R> implements Collector<T, A, R> {
                                    downstream.characteristics());
     }
 
+
+
+/**
+     * Adapts a {@code Collector} to perform an additional finishing
+     * transformation.  For example, one could adapt the {@link #toList()}
+     * collector to always produce an immutable list with:
+     * <pre>{@code
+     *     List<String> people
+     *         = people.stream().collect(collectingAndThen(toList(), Collections::unmodifiableList));
+          首先收集并处理，先收集一个list,然后再去处理 把它转换成Collections::unmodifiableList 不可变列表
+     * }</pre>
+     *
+     * @param <T> the type of the input elements
+     * @param <A> intermediate accumulation type of the downstream collector
+     * @param <R> result type of the downstream collector
+     * @param <RR> result type of the resulting collector
+     * @param downstream a collector
+     * @param finisher a function to be applied to the final result of the downstream collector
+     * @return a collector which performs the action of the downstream collector,
+     * followed by an additional finishing step
+     */
+   接收一个Collector去执行额外的转换。
+    接收两个参数一个downstream, 一个finisher。 先去应用downstream 等应用完了之后再去应用finisher
+    public static<T,A,R,RR> Collector<T,A,RR> collectingAndThen(Collector<T,A,R> downstream,
+                                                                Function<R,RR> finisher) {
+        获取特性集合
+        Set<Collector.Characteristics> characteristics = downstream.characteristics();
+        if (characteristics.contains(Collector.Characteristics.IDENTITY_FINISH)) {
+            if (characteristics.size() == 1)
+                characteristics = Collectors.CH_NOID;
+            else {
+                characteristics = EnumSet.copyOf(characteristics);
+                // 这里将IDENTITY_FINISH去掉的
+                // 其含义是 如果强制进行转换那么就不会执行finisher, 但是这里需要执行finisher所以将。
+                // IDENTITY_FINISH移除
+                characteristics.remove(Collector.Characteristics.IDENTITY_FINISH);
+                characteristics = Collections.unmodifiableSet(characteristics);
+            }
+        }
+        return new CollectorImpl<>(downstream.supplier(),
+                                   downstream.accumulator(),
+                                   downstream.combiner(),
+                                   downstream.finisher().andThen(finisher),
+                                   characteristics);
+    }
+
+
+ /**
+     * Returns a {@code Collector} accepting elements of type {@code T} that
+     * counts the number of input elements.  If no elements are present, the
+     * result is 0.
+     *
+     * @implSpec
+     * This produces a result equivalent to:
+     * <pre>{@code
+     *     reducing(0L, e -> 1L, Long::sum)
+     * }</pre>
+     *
+     * @param <T> the type of the input elements
+     * @return a {@code Collector} that counts the input elements
+     */
+    // 计算
+    public static <T> Collector<T, ?, Long>
+    counting() {
+        // 调用reducing 方法 , 第一个初始值是0L, 第二个映射是 e -> 1L 给定一个元素都返回1, 
+         第三个 将所有的1加起来。
+        return reducing(0L, e -> 1L, Long::sum);
+    }
+
+
+   /**
+     * Returns a {@code Collector} that produces the sum of a integer-valued
+     * function applied to the input elements.  If no elements are present,
+     * the result is 0.
+     *
+     * @param <T> the type of the input elements
+     * @param mapper a function extracting the property to be summed
+     * @return a {@code Collector} that produces the sum of a derived property
+     */
+   将ToIntFunction应用到stream中的每一个元素上 得到一个整型的结果，然后把这个整型的结果求和，
+   如果没有元素存在那么结果就是0
+    public static <T> Collector<T, ?, Integer>
+    summingInt(ToIntFunction<? super T> mapper) {
+        return new CollectorImpl<>(
+                // 这里为什么定义一个整型数组,为什么不直接定义一个整型数字? 
+                // 如果这里使用的是一个整型数字,但是数字是无法传递的,数字本身是一个值类型的,
+                // 而数组是一个引用类型的。 如果这里返回一个数字的话那么这样就返回一个固定的不可变的,
+                // 那么怎么将这个数字传递到下面去喃,是传递不了的。 
+                // 如果使用数组就可以,因为数组本身是一个引用,把这个数组传递过去是可以的。
+                // 同时对于收集器来说中间收集器应该是一个容器就是它可以容纳东西的容器。
+                // 而数组本身是容器,但是呢并不是说往数组里面添加新的东西而是从数组中取出它唯一的元素也就a[0],
+                // 然后不断的给a[0]的值往上累加使得这个a[0]的值不断变化。
+                () -> new int[1],
+                (a, t) -> { a[0] += mapper.applyAsInt(t); },
+                (a, b) -> { a[0] += b[0]; return a; },
+                a -> a[0], CH_NOID);
+    }
+
+
+ /**
+     * Returns a {@code Collector} that produces the arithmetic mean of an integer-valued
+     * function applied to the input elements.  If no elements are present,
+     * the result is 0.
+     *
+     * @param <T> the type of the input elements
+     * @param mapper a function extracting the property to be summed
+     * @return a {@code Collector} that produces the sum of a derived property
+     */
+    public static <T> Collector<T, ?, Double>
+    averagingInt(ToIntFunction<? super T> mapper) {
+        return new CollectorImpl<>(
+                () -> new long[2],
+                  // a[0]是总数, a[1]是个数
+                (a, t) -> { a[0] += mapper.applyAsInt(t); a[1]++; },
+                (a, b) -> { a[0] += b[0]; a[1] += b[1]; return a; },
+                // 如果a[1]个数为零,那么就等于0,如果不等于零,那么就用a[0]/a[1] = 总数/个数
+                a -> (a[1] == 0) ? 0.0d : (double) a[0] / a[1], CH_NOID);
+    }
+```
+22.1、Collectors工厂类源码之 _reducing,_groupingBy,_partitioningBy分析
+```
+ /**
+     * Returns a {@code Collector} implementing a "group by" operation on
+     * input elements of type {@code T}, grouping elements according to a
+     * classification function, and returning the results in a {@code Map}.
+     *
+     * <p>The classification function maps elements to some key type {@code K}.
+     * The collector produces a {@code Map<K, List<T>>} whose keys are the
+     * values resulting from applying the classification function to the input
+     * elements, and whose corresponding values are {@code List}s containing the
+     * input elements which map to the associated key under the classification
+     * function.
+     *
+     * <p>There are no guarantees on the type, mutability, serializability, or
+     * thread-safety of the {@code Map} or {@code List} objects returned.
+     * @implSpec
+     * This produces a result similar to:
+     * <pre>{@code
+     *     groupingBy(classifier, toList());
+     * }</pre>
+     *
+     * @implNote
+     * The returned {@code Collector} is not concurrent.  For parallel stream
+     * pipelines, the {@code combiner} function operates by merging the keys
+     * from one map into another, which can be an expensive operation.  If
+     * preservation of the order in which elements appear in the resulting {@code Map}
+     * collector is not required, using {@link #groupingByConcurrent(Function)}
+     * may offer better parallel performance.
+     *
+     * @param <T> the type of the input elements
+     * @param <K> the type of the keys
+     * @param classifier the classifier function mapping input elements to keys
+     * @return a {@code Collector} implementing the group-by operation
+     *
+     * @see #groupingBy(Function, Collector)
+     * @see #groupingBy(Function, Supplier, Collector)
+     * @see #groupingByConcurrent(Function)
+     */
+    public static <T, K> Collector<T, ?, Map<K, List<T>>>
+    // 输入类型是T以及T之上的类型, 返回类型是k以及k之下的类型。
+    groupingBy(Function<? super T, ? extends K> classifier) {
+        // 第一个参数是一个function对象,第二个是一个Collector对象
+        return groupingBy(classifier, toList());
+    }
+
+ /**
+     * Returns a {@code Collector} implementing a cascaded "group by" operation
+     * on input elements of type {@code T}, grouping elements according to a
+     * classification function, and then performing a reduction operation on
+     * the values associated with a given key using the specified downstream
+     * {@code Collector}.
+     *
+     * <p>The classification function maps elements to some key type {@code K}.
+     * The downstream collector operates on elements of type {@code T} and
+     * produces a result of type {@code D}. The resulting collector produces a
+     * {@code Map<K, D>}.
+     *
+     * <p>There are no guarantees on the type, mutability,
+     * serializability, or thread-safety of the {@code Map} returned.
+     *
+     * <p>For example, to compute the set of last names of people in each city:
+     * <pre>{@code
+     *     Map<City, Set<String>> namesByCity
+     *         = people.stream().collect(groupingBy(Person::getCity,
+     *                                              mapping(Person::getLastName, toSet())));
+     * }</pre>
+     *
+     * @implNote
+     * The returned {@code Collector} is not concurrent.  For parallel stream
+     * pipelines, the {@code combiner} function operates by merging the keys
+     * from one map into another, which can be an expensive operation.  If
+     * preservation of the order in which elements are presented to the downstream
+     * collector is not required, using {@link #groupingByConcurrent(Function, Collector)}
+     * may offer better parallel performance.
+     *
+     * @param <T> the type of the input elements
+     * @param <K> the type of the keys
+     * @param <A> the intermediate accumulation type of the downstream collector
+     * @param <D> the result type of the downstream reduction
+     * @param classifier a classifier function mapping input elements to keys
+     * @param downstream a {@code Collector} implementing the downstream reduction
+     * @return a {@code Collector} implementing the cascaded group-by operation
+     * @see #groupingBy(Function)
+     *
+     * @see #groupingBy(Function, Supplier, Collector)
+     * @see #groupingByConcurrent(Function, Collector)
+     */
+    //这个方法本身是返回一个收集器Collector, 而且也会传入一个收集器downstream来使用,
+      //那么使用的这个收集器可以认为是一个下游,返回的可以认为是一个上游
+     // 构造思路是downstream本身是一个收集器,
+     // 既然是一收集器所以它有Supplier、accumulator、combiner和一个可以选的finisher,
+     //既然具备了收集器所具有的全部元素,那么它又提供了Function分类器这样一个函数,
+     它实际上就是将这个分类器函数给应用到收集器中,使得对收集器的中间收集过程进行了一系列的转换,
+      那么最终转换成的一个收集器就是这个方法返回的结果Collector<T, ?, Map<K, D>>.
+     T类型表示stream流中元素类型,
+     K类型表示分类器所返回的那个结果的类型,换句话说k就是所返回的那个map的key.
+     D类型表示返回map的值类型。
+ public static <T, K, A, D>
+    Collector<T, ?, Map<K, D>> groupingBy(Function<? super T, ? extends K> classifier,
+                                          Collector<? super T, A, D> downstream) {
+          
+        return groupingBy(classifier, HashMap::new, downstream);
+    }
+
+
+
+  /**
+     * Returns a {@code Collector} implementing a cascaded "group by" operation
+     * on input elements of type {@code T}, grouping elements according to a
+     * classification function, and then performing a reduction operation on
+     * the values associated with a given key using the specified downstream
+     * {@code Collector}.  The {@code Map} produced by the Collector is created
+     * with the supplied factory function.
+     *
+     * <p>The classification function maps elements to some key type {@code K}.
+     * The downstream collector operates on elements of type {@code T} and
+     * produces a result of type {@code D}. The resulting collector produces a
+     * {@code Map<K, D>}.
+     *
+     * <p>For example, to compute the set of last names of people in each city,
+     * where the city names are sorted:
+     * <pre>{@code
+     *     Map<City, Set<String>> namesByCity
+                 // 第一个参数就是分类器,也就是这个例子中调用getCity的返回结果,实际上就是city对象
+                 //第二个参数这里传入的是TreeMap::new, 这个实际上就传递给Supplier<M> mapFactory
+                 //第三个是mapping,这个mapping是collector中提供的映射函数,
+                   将一个类型映射成一个结果的,最终得到一个收集器toSet()。
+     *         = people.stream().collect(groupingBy(Person::getCity, TreeMap::new,
+     *                                              mapping(Person::getLastName, toSet())));
+     * }</pre>
+     *
+     * @implNote
+     * The returned {@code Collector} is not concurrent.  For parallel stream
+     * pipelines, the {@code combiner} function operates by merging the keys
+     * from one map into another, which can be an expensive operation.  If
+     * preservation of the order in which elements are presented to the downstream
+     * collector is not required, using {@link #groupingByConcurrent(Function, Supplier, Collector)}
+     * may offer better parallel performance.
+     *
+     * @param <T> the type of the input elements
+     * @param <K> the type of the keys
+     * @param <A> the intermediate accumulation type of the downstream collector
+     * @param <D> the result type of the downstream reduction
+     * @param <M> the type of the resulting {@code Map}
+     * @param classifier a classifier function mapping input elements to keys
+     * @param downstream a {@code Collector} implementing the downstream reduction
+     * @param mapFactory a function which, when called, produces a new empty
+     *                   {@code Map} of the desired type
+     * @return a {@code Collector} implementing the cascaded group-by operation
+     *
+     * @see #groupingBy(Function, Collector)
+     * @see #groupingBy(Function)
+     * @see #groupingByConcurrent(Function, Supplier, Collector)
+     */
+    public static <T, K, D, A, M extends Map<K, D>>
+    Collector<T, ?, M> groupingBy(Function<? super T, ? extends K> classifier,
+                                  Supplier<M> mapFactory,
+                                  Collector<? super T, A, D> downstream) {
+        // 获取下游流的Supplier
+        Supplier<A> downstreamSupplier = downstream.supplier();
+        // 得到一个累加器对象。 这样做的目的就是从downstream中的5个方法来最终得到新的一个collectorImpl对象
+        // 那么collectorimpl对象就要提供那5个方法来构造 collectorimpl对象。
+        // 所以先获取下游的两个对象来去构造这个方法本身应该返回的那个collector对象
+        BiConsumer<A, ? super T> downstreamAccumulator = downstream.accumulator();
+        //这里开始进行构造accumulator对象,这个对象是借助下游收集器的累加器对象来进行构造的
+        BiConsumer<Map<K, A>, T> accumulator = (m, t) -> {
+            K key = Objects.requireNonNull(classifier.apply(t), "element cannot be mapped to a null key");
+            A container = m.computeIfAbsent(key, k -> downstreamSupplier.get());
+            // container表示中间容器, t表示流中元素类型 
+            downstreamAccumulator.accept(container, t);
+        };
+        //将部分结果合并到一起
+        BinaryOperator<Map<K, A>> merger = Collectors.<K, A, Map<K, A>>mapMerger(downstream.combiner());
+        @SuppressWarnings("unchecked")
+        // mapFactory 是一个Supplier对象调用get方法返回中间结果类型,而中间结果类型是Map<K, A>类型,
+        // 所以强制的转换成Map<K, A>类型是可以转换的
+        Supplier<Map<K, A>> mangledFactory = (Supplier<Map<K, A>>) mapFactory;
+
+        if (downstream.characteristics().contains(Collector.Characteristics.IDENTITY_FINISH)) {
+            return new CollectorImpl<>(mangledFactory, accumulator, merger, CH_ID);
+        }
+        else {
+            @SuppressWarnings("unchecked")
+            Function<A, A> downstreamFinisher = (Function<A, A>) downstream.finisher();
+            Function<Map<K, A>, M> finisher = intermediate -> {
+                  //接收两个参数,返回一个结果
+                intermediate.replaceAll((k, v) -> downstreamFinisher.apply(v));
+                @SuppressWarnings("unchecked")
+                M castResult = (M) intermediate;
+                return castResult;
+            };
+            return new CollectorImpl<>(mangledFactory, accumulator, merger, finisher, CH_NOID);
+        }
+    }
+
+
+    /**
+     * Returns a {@code Collector} which partitions the input elements according
+     * to a {@code Predicate}, reduces the values in each partition according to
+     * another {@code Collector}, and organizes them into a
+     * {@code Map<Boolean, D>} whose values are the result of the downstream
+     * reduction.
+     *
+     * <p>There are no guarantees on the type, mutability,
+     * serializability, or thread-safety of the {@code Map} returned.
+     *
+     * @param <T> the type of the input elements
+     * @param <A> the intermediate accumulation type of the downstream collector
+     * @param <D> the result type of the downstream reduction
+     * @param predicate a predicate used for classifying input elements
+     * @param downstream a {@code Collector} implementing the downstream
+     *                   reduction
+     * @return a {@code Collector} implementing the cascaded partitioning
+     *         operation
+     *
+     * @see #partitioningBy(Predicate)
+     */
+    public static <T, D, A>
+    Collector<T, ?, Map<Boolean, D>> partitioningBy(Predicate<? super T> predicate,
+                                                    Collector<? super T, A, D> downstream) {
+        BiConsumer<A, ? super T> downstreamAccumulator = downstream.accumulator();
+        BiConsumer<Partition<A>, T> accumulator = (result, t) ->
+                downstreamAccumulator.accept(predicate.test(t) ? result.forTrue : result.forFalse, t);
+        BinaryOperator<A> op = downstream.combiner();
+        BinaryOperator<Partition<A>> merger = (left, right) ->
+                new Partition<>(op.apply(left.forTrue, right.forTrue),
+                                op.apply(left.forFalse, right.forFalse));
+        Supplier<Partition<A>> supplier = () ->
+                  //分成两组,这里没有使用map是因为没法限制它有几组元素,
+                  // 所以这里就没有使用map作为返回结果,而是自己定义了一个私有的静态类去描述这个结果。
+                  // 而这个私有静态内部类把最终结果分为两部分,一部分是真的,一部分是假的。
+                new Partition<>(downstream.supplier().get(),
+                                downstream.supplier().get());
+        if (downstream.characteristics().contains(Collector.Characteristics.IDENTITY_FINISH)) {
+            return new CollectorImpl<>(supplier, accumulator, merger, CH_ID);
+        }
+        else {
+            Function<Partition<A>, Map<Boolean, D>> finisher = par ->
+                    new Partition<>(downstream.finisher().apply(par.forTrue),
+                                    downstream.finisher().apply(par.forFalse));
+            return new CollectorImpl<>(supplier, accumulator, merger, finisher, CH_NOID);
+        }
+    }
 ```
 
+23、Stream 源码分析
+```
 
-
+```
 
 
 
