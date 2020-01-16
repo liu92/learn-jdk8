@@ -3515,11 +3515,78 @@ static class CollectorImpl<T, A, R> implements Collector<T, A, R> {
     }
 ```
 
-23、Stream 源码分析
+23、Stream 和 baseStream 源码分析
 ```
 
-```
+public interface Stream<T> extends BaseStream<T, Stream<T>>
 
+S表示 BaseStream<T,S>类型的下级,从上面的Stream<T>可以知道到,这个实现符合BaseStream中S的规定,
+Stream<T>中S的类型就是Stream<T>类型
+public interface BaseStream<T, S extends BaseStream<T, S>
+
+```
+23.1 Spliterator 分割迭代器
+```
+/**
+     * Creates a {@link Spliterator} over the elements in this collection.
+     *
+     * Implementations should document characteristic values reported by the
+     * spliterator.  Such characteristic values are not required to be reported
+     * if the spliterator reports {@link Spliterator#SIZED} and this collection
+     * contains no elements.
+     *
+     * <p>The default implementation should be overridden by subclasses that
+     * can return a more efficient spliterator.  In order to
+     * preserve expected laziness behavior for the {@link #stream()} and
+     * {@link #parallelStream()}} methods, spliterators should either have the
+     * characteristic of {@code IMMUTABLE} or {@code CONCURRENT}, or be
+     * <em><a href="Spliterator.html#binding">late-binding</a></em>.
+     * If none of these is practical, the overriding class should describe the
+     * spliterator's documented policy of binding and structural interference,
+     * and should override the {@link #stream()} and {@link #parallelStream()}
+     * methods to create streams using a {@code Supplier} of the spliterator,
+     * as in:
+     * <pre>{@code
+     *     Stream<E> s = StreamSupport.stream(() -> spliterator(), spliteratorCharacteristics)
+     * }</pre>
+     * <p>These requirements ensure that streams produced by the
+     * {@link #stream()} and {@link #parallelStream()} methods will reflect the
+     * contents of the collection as of initiation of the terminal stream
+     * operation.
+     *
+     * @implSpec
+     * The default implementation creates a
+        默认实现会创建一个 延迟绑定(late-binding) 的 spliterator,
+        是从集合的Iterator(迭代器)创建的一个延迟绑定的分割迭代器。
+       创建出来的分割迭代器会继承集合迭代器的 快速失败(遇到问题抛出异常不在往下走了)的属性。
+     * <em><a href="Spliterator.html#binding">late-binding</a></em> spliterator
+     * from the collections's {@code Iterator}.  The spliterator inherits the
+     * <em>fail-fast</em> properties of the collection's iterator.
+     * <p>
+     * The created {@code Spliterator} reports {@link Spliterator#SIZED}.
+     *
+     * @implNote
+     * The created {@code Spliterator} additionally reports
+       创建出来的Spliterator会额外的增加一个SUBSIZED这样一个特性。Spliterator分割后会生成若干个块,
+         那么每一个块的大小又是确定的这个就称为 SUBSIZED。
+     * {@link Spliterator#SUBSIZED}.
+     *
+     * <p>If a spliterator covers no elements then the reporting of additional
+     * characteristic values, beyond that of {@code SIZED} and {@code SUBSIZED},
+     * does not aid clients to control, specialize or simplify computation.
+     * However, this does enable shared use of an immutable and empty
+     * spliterator instance (see {@link Spliterators#emptySpliterator()}) for
+     * empty collections, and enables clients to determine if such a spliterator
+     * covers no elements.
+     *
+     * @return a {@code Spliterator} over the elements in this collection
+     * @since 1.8
+     */
+    @Override
+    default Spliterator<E> spliterator() {
+        return Spliterators.spliterator(this, 0);
+    }
+```
 
 
 
