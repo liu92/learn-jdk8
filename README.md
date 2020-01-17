@@ -3586,10 +3586,325 @@ public interface BaseStream<T, S extends BaseStream<T, S>
     default Spliterator<E> spliterator() {
         return Spliterators.spliterator(this, 0);
     }
+
+
+
+ /**
+     专门为原生值设定的分割迭代器
+     * A Spliterator specialized for primitive values.
+         
+     *  这个T类型必须是原生类型的包装类型,比如说针对于原生类型的int,对于的Integer
+     * @param <T> the type of elements returned by this Spliterator.  The
+     * type must be a wrapper type for a primitive type, such as {@code Integer}
+     * for the primitive {@code int} type.
+         
+    针对原生类型特化的consumer
+     * @param <T_CONS> the type of primitive consumer.  The type must be a
+     * primitive specialization of {@link java.util.function.Consumer} for
+     * {@code T}, such as {@link java.util.function.IntConsumer} for
+     * {@code Integer}.
+      原生的分割迭代器类型 
+     * @param <T_SPLITR> the type of primitive Spliterator.  The type must be
+     * a primitive specialization of Spliterator for {@code T}, such as
+     * {@link Spliterator.OfInt} for {@code Integer}.
+     *
+     * @see Spliterator.OfInt
+     * @see Spliterator.OfLong
+     * @see Spliterator.OfDouble
+     * @since 1.8
+     */
+    public interface OfPrimitive<T, T_CONS, T_SPLITR extends Spliterator.OfPrimitive<T, T_CONS, T_SPLITR>>
+            extends Spliterator<T> {
+
+}
+
+
+
+/**
+     * A Spliterator specialized for {@code int} values.
+     * @since 1.8
+     */
+      // T就是Integer类型, T_CONS是 IntConsumer类型, T_SPLITR是ofInt类型
+    public interface OfInt extends OfPrimitive<Integer, IntConsumer, OfInt> {
+        @Override
+        OfInt trySplit();
+
+        //这个tryAdvance的顶层是OfPrimitive
+        @Override
+        boolean tryAdvance(IntConsumer action);
+
+        @Override
+        default void forEachRemaining(IntConsumer action) {
+            do { } while (tryAdvance(action));
+        }
+
+        /**
+         * {@inheritDoc}
+         * @implSpec
+         * If the action is an instance of {@code IntConsumer} then it is cast
+         * to {@code IntConsumer} and passed to
+           如果这个action是IntConsumer的实例的话那么他会强制的转换为IntConsumer然后传递个
+           tryAdvance。
+         * {@link #tryAdvance(java.util.function.IntConsumer)}; otherwise
+         * the action is adapted to an instance of {@code IntConsumer}, by
+         * boxing the argument of {@code IntConsumer}, and then passed to
+         * {@link #tryAdvance(java.util.function.IntConsumer)}.
+             否则这个action会被适配为IntConsumer实例,方式是通过对于IntConsumer的装箱
+            然后再将它传递给上面的tryAdvance方法
+         */
+        @Override
+        // 这个tryAdvance的顶层是Spliterator
+        default boolean tryAdvance(Consumer<? super Integer> action) {
+               // 这里为什么能判断 action是 IntConsumer呢？ 而且 IntConsumer和 Consumer
+                  并没有继承关系。那么为什么能转换的呢？
+               // 个人猜测这里是因为action中 ? 是Integer或者 Integer的上级,
+               // 然后这里用action来判断是不是为IntConsumer。是为向上转型的操作吧 
+               // 实际上 Consumer接口中接收的参数是accept(T t);
+                 而IntConsumer中接收的餐是accept(int t)。
+                因此Consumer和IntConsumer在参数T是Int/Integer是时候作用会重叠。
+               为什么会重叠呢,这是因为JAVA中存在自动装箱和拆箱的操作。
+                                               
+            if (action instanceof IntConsumer) {
+                return tryAdvance((IntConsumer) action);
+            }
+            else {
+                if (Tripwire.ENABLED)
+                    Tripwire.trip(getClass(),
+                                  "{0} calling Spliterator.OfInt.tryAdvance((IntConsumer) action::accept)");
+               // 对于lambda表达式的信息都是通过上下文推测出来的
+                return tryAdvance((IntConsumer) action::accept);
+            }
+        }
+
+        /**
+         * {@inheritDoc}
+         * @implSpec
+         * If the action is an instance of {@code IntConsumer} then it is cast
+         * to {@code IntConsumer} and passed to
+         * {@link #forEachRemaining(java.util.function.IntConsumer)}; otherwise
+         * the action is adapted to an instance of {@code IntConsumer}, by
+         * boxing the argument of {@code IntConsumer}, and then passed to
+         * {@link #forEachRemaining(java.util.function.IntConsumer)}.
+         */
+        //遍历后面所有的
+        @Override
+        default void forEachRemaining(Consumer<? super Integer> action) {
+              //action传递的即可能是一个引用也可能传递的是一个lambda表达式,
+              // 如果传递的是lambda表达式 那么符合Consumer接口的要求,也符合IntConsumer的要求
+            if (action instanceof IntConsumer) {
+                forEachRemaining((IntConsumer) action);
+            }
+            else {
+                if (Tripwire.ENABLED)
+                    Tripwire.trip(getClass(),
+                                  "{0} calling Spliterator.OfInt.forEachRemaining((IntConsumer) action::accept)");
+                 // 如果不是IntConsumer那么传递了一个 方法引用, 方法引用本身就是lambda表达式
+                 // 当点击accept时会进入 Consumer接口中去,当点击:: 会进入IntConsumer中去
+                 // 这是因为进行强制转换
+                forEachRemaining((IntConsumer) action::accept);
+            }
+        }
+}
 ```
 
+23.2 、通过Consumer例子来 理解OfInt中 tryAdvance方法中的转换
+```java
+package com.learn.jdk.chapter40;
+
+import java.util.function.Consumer;
+import java.util.function.IntConsumer;
+
+/**
+ * chapter40
+ * @ClassName: ConsumerTest
+ * @Description: Consumer 和 IntConsumer
+ * @Author: lin
+ * @Date: 2020/1/17 15:02
+ * History:
+ * @<version> 1.0
+ */
+public class ConsumerTest {
+
+    public void test(Consumer<Integer> consumer){
+        consumer.accept(100);
+    }
+
+    public static void main(String[] args) {
+        ConsumerTest consumerTest = new ConsumerTest();
+         // 定义一个lambda表达式 既可以赋值给Consumer对象,也可以赋值给IntConsumer对象
+        Consumer<Integer> consumer = i -> System.out.println(i);
+        IntConsumer intConsumer = i -> System.out.println(i);
+
+        System.out.println(consumer instanceof Consumer);
+        System.out.println(intConsumer instanceof IntConsumer);
+
+         // 面向对象的方式
+         consumerTest.test(consumer);
+          //运行报错,intConsumer是lambda表达式是不能转换为Consumer对象的
+//         consumerTest.test((Consumer) intConsumer);
+
+         //函数式方式
+         consumerTest.test(consumer::accept);
+         //函数式方式
+         consumerTest.test(intConsumer::accept);
+    }
+
+}
+
+```
+
+24、ReferencePipeline和AbstractPipeline源码分析
+```
+/**
+ 一个抽象的基类是一个中间管道阶段或者是管道源阶段 里面的元素类型是U类型
+ * Abstract base class for an intermediate pipeline stage or pipeline source
+ * stage implementing whose elements are of type {@code U}.
+ *
+ * @param <P_IN> type of elements in the upstream source
+ * @param <P_OUT> type of elements in produced by this stage
+ *
+ * @since 1.8
+ */
+abstract class ReferencePipeline<P_IN, P_OUT>
+        extends AbstractPipeline<P_IN, P_OUT, Stream<P_OUT>>
+        implements Stream<P_OUT>  {
 
 
 
+
+
+
+    /**
+       源阶段
+     * Source stage of a ReferencePipeline.
+     *
+     * @param <E_IN> type of elements in the upstream source
+               上游源元素类型
+     * @param <E_OUT> type of elements in produced by this stage
+               这个阶段源所 生成的元素类型。
+     * @since 1.8
+     */
+    static class Head<E_IN, E_OUT> extends ReferencePipeline<E_IN, E_OUT> {
+
+ /**
+         * Constructor for the source stage of a Stream.
+         *
+         * @param source {@code Supplier<Spliterator>} describing the stream
+         *               source
+         * @param sourceFlags the source flags for the stream source, described
+         *                    in {@link StreamOpFlag}
+         */
+        Head(Supplier<? extends Spliterator<?>> source,
+             int sourceFlags, boolean parallel) {
+            super(source, sourceFlags, parallel);
+        }
+
+        /**
+         * Constructor for the source stage of a Stream.
+         *
+         * @param source {@code Spliterator} describing the stream source
+         * @param sourceFlags the source flags for the stream source, described
+         *                    in {@link StreamOpFlag}
+         */
+        Head(Spliterator<?> source,
+             int sourceFlags, boolean parallel) {
+            super(source, sourceFlags, parallel);
+        }
+
+        @Override
+        final boolean opIsStateful() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        final Sink<E_IN> opWrapSink(int flags, Sink<E_OUT> sink) {
+            throw new UnsupportedOperationException();
+        }
+
+        // Optimized sequential terminal operations for the head of the pipeline
+           针对于管道源的一个优化的串行终止操作
+        // 也就是说在 被流的源对象所调用的时候,会直接调用这个forEach
+        // list.stream().forEach()
+         
+        @Override
+        public void forEach(Consumer<? super E_OUT> action) {
+            if (!isParallel()) {
+                sourceStageSpliterator().forEachRemaining(action);
+            }
+            else {
+                super.forEach(action);
+            }
+        }
+}
+
+
+
+/**
+ * Abstract base class for "pipeline" classes, which are the core
+ * implementations of the Stream interface and its primitive specializations.
+ * Manages construction and evaluation of stream pipelines.
+ *
+ * <p>An {@code AbstractPipeline} represents an initial portion of a stream
+ * pipeline, encapsulating a stream source and zero or more intermediate
+ * operations.  The individual {@code AbstractPipeline} objects are often
+ * referred to as <em>stages</em>, where each stage describes either the stream
+ * source or an intermediate operation.
+ *
+ * <p>A concrete intermediate stage is generally built from an
+ * {@code AbstractPipeline}, a shape-specific pipeline class which extends it
+ * (e.g., {@code IntPipeline}) which is also abstract, and an operation-specific
+ * concrete class which extends that.  {@code AbstractPipeline} contains most of
+ * the mechanics of evaluating the pipeline, and implements methods that will be
+ * used by the operation; the shape-specific classes add helper methods for
+ * dealing with collection of results into the appropriate shape-specific
+ * containers.
+ *
+ * <p>After chaining a new intermediate operation, or executing a terminal
+ * operation, the stream is considered to be consumed, and no more intermediate
+ * or terminal operations are permitted on this stream instance.
+ *
+ * @implNote
+ * <p>For sequential streams, and parallel streams without
+ * <a href="package-summary.html#StreamOps">stateful intermediate
+ * operations</a>, parallel streams, pipeline evaluation is done in a single
+  这里注意: 函数式编程的执行方式 比如在一个集合中取出1元素执行完了一趟操作完后再执行下一个元素
+  在24.1中的stream().map()...有解释 
+ * pass that "jams" all the operations together.  For parallel streams with
+
+ * stateful operations, execution is divided into segments, where each
+ * stateful operations marks the end of a segment, and each segment is
+ * evaluated separately and the result used as the input to the next
+ * segment.  In all cases, the source data is not consumed until a terminal
+     源数据直到终止操作开始的时候,源数据才开始被消费。
+ * operation begins.
+ *
+ * @param <E_IN>  type of input elements
+ * @param <E_OUT> type of output elements
+ * @param <S> type of the subclass implementing {@code BaseStream}
+ * @since 1.8
+ */
+abstract class AbstractPipeline<E_IN, E_OUT, S extends BaseStream<E_OUT, S>>
+        extends PipelineHelper<E_OUT> implements BaseStream<E_OUT, S> {}
+```
+24.1、ReferencePipeline和AbstractPipeline源码分析
+```
+1.ReferencePipeline表示流的源阶段与中间阶段
+2.AbstractPipeline.Head表示流的源阶段
+
+两者大部分属性的设定都是类似的,但是存在一些属性是不同的,比如说Head是没有previousStage的,
+而ReferencePipeline则是存在previousStage的等等。
+
+
+stream().map(i -> i*2).filter(i > 10)....
+将每一个元素拿出来,经历中间所有的操作 这个就是管道计算在一趟过程中就执行完了,
+这一趟操作会将所有的操作都放置到一起去完成
+1,2,3,4,5,6
+
+
+list.stream().map(itm -> item).forEach( System.out::println);
+这种方式会调用AbstractPipeline中的forEach方法
+list.stream().forEach( System.out::println);
+而这种方式会调用ReferencePipeline.Head中的forEach()
+```
 
 
