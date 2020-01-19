@@ -2742,14 +2742,33 @@ public class CustomizeCollector<T> implements Collector<T, Set<T>, Set<T>> {
      * Indicates that the finisher function is the identity function and
      * can be elided.  If set, it must be the case that an unchecked cast
      * from A to R will succeed.
-表示finisher函数就是identity函数并且可以被省略掉，如果设置了，
-那么必须是未检出的转换从A到R的类型转换一定是成功的
+表示finisher函数就是identity函数并且可以被省略掉,如果设置了,
+那么必须是未检出的转换从A到R的类型转换一定是成功的. 
+如果标注为这个特性,那么他会将中间结果直接进行一个强制类型转换,转换成结果的R类型 然后返回。
+不会调用finisher这个方法
 IDENTITY_FINISH
      */
         
+
+/**
+ * Indicates that this collector is <em>concurrent</em>, meaning that
+ * the result container can support the accumulator function being
+ * called concurrently with the same result container from multiple
+ * threads.
+ *
+ * <p>If a {@code CONCURRENT} collector is not also {@code UNORDERED},
+ * then it should only be evaluated concurrently if applied to an
+ * unordered data source.
+表示这个收集器是并行的，这意味着结果容器支持 accumulator函数 并行的被调用, 在相同的容器下使用多个线程。
+也就是多个线程同时的去操作一个相同的结果容器。
+如果 一个并行收集器它不是UNORDERED,那么它只能被并行的用于无序的数据源。
+CONCURRENT
+ */
+       
 ```
 
 21、自定义收集器深度剖析与并行流陷阱
+  和收集器枚举值特性分析和并行流原理
 ```java
 package com.learn.jdk.chapter29;
 
@@ -2776,10 +2795,20 @@ import static java.util.stream.Collectors.groupingBy;
  * @<version> 1.0
  */
 public class CustomizeCollector2<T> implements Collector<T, Set<T>, Map<T,T>> {
+    /**
+     * 用于返回中间收集的结果容器
+     * @return
+     */
     @Override
     public Supplier<Set<T>> supplier() {
         System.out.println("supplier invoked!");
-        return HashSet::new;
+//        return HashSet::new;
+        return () ->{
+            // 如果是串行流,那么这里只打印一次,也就是说产生是结果容器只有一个。
+            // 如果是并行流,那么这里会打印多次, 这里会打印多个结果容器
+            System.out.println("-------------");
+            return new HashSet<>();
+        };
     }
 
     @Override
@@ -2788,7 +2817,14 @@ public class CustomizeCollector2<T> implements Collector<T, Set<T>, Map<T,T>> {
         // set 表示中间结果容器类型
         // item 表示stream中下一个元素的类型
         return (set, item) -> {
-            // 一共10元素，按照顺序执行，要往中间容器中累加10个，那么这个方法就会被调用10次
+            // 一共10元素，按照顺序执行,要往中间容器中累加10个,那么这个方法就会被调用10次
+            // 这里打印出 set 就会有异常。
+            // 如果是并行的话,那么绝对不要再accumulator中 对目标或者中间的结果容器执行任何的额外操作,
+            // 比如 一边执行打印,一边添加。 只单纯的执行本身该执行的操作
+            // 否则在并行的情况下会抛出异常。
+
+            // 因此在没有CONCURRENT的情况下 就变成多个线程会有多个中间结果容器,
+            // 比如说有3个线程那么就有3个中间结果容器, 每一次的set是属于线程本身的set。3个线程会有3个set。他们之间是互补干扰的
             System.out.println("accumulator: " +set+", " + Thread.currentThread().getName());
             set.add(item);
         };
@@ -2802,8 +2838,13 @@ public class CustomizeCollector2<T> implements Collector<T, Set<T>, Map<T,T>> {
      */
     @Override
     public BinaryOperator<Set<T>> combiner() {
+        // 这里打印只是表示combiner被调用,但不表示lambda表达式被调用
         System.out.println("combiner invoked!");
+        // 在并行情况下并且收集器本身没有CONCURRENT这个特性的情况下,combiner才会被调用,
+        // 如果是并行流并且存在CONCURRENT这个特性,那么combiner不会被调用
         return (set1, set2) -> {
+            System.out.println("set1: " + set1);
+            System.out.println("set2: " + set2);
             set1.addAll(set2);
             return  set1;
         };
@@ -2834,8 +2875,8 @@ public class CustomizeCollector2<T> implements Collector<T, Set<T>, Map<T,T>> {
     public Set<Characteristics> characteristics() {
         System.out.println("characteristics invoked!");
         return Collections.unmodifiableSet(
-                // IDENTITY_FINISH
-                EnumSet.of(UNORDERED,CONCURRENT));
+                // IDENTITY_FINISH, CONCURRENT
+                EnumSet.of(UNORDERED));
 
 //        return Collections.unmodifiableSet(
 //                // IDENTITY_FINISH
@@ -2850,12 +2891,16 @@ public class CustomizeCollector2<T> implements Collector<T, Set<T>, Map<T,T>> {
         //                // IDENTITY_FINISH
         //                EnumSet.of(UNORDERED,CONCURRENT));
         //思考:这里如果加上了CONCURRENT,那么在并行流情况下执行会出现错误。这个出现错误的原因是什么？
-        //错误: Exception in thread "main" java.util.ConcurrentModificationException: java.util.ConcurrentModificationException
-        // 原因:
+        //错误: Exception in thread "main" java.util.ConcurrentModificationException:
+        // java.util.ConcurrentModificationException
+        // 原因: 这里猜测是因为在并行流的情况下,多线程执行调用accumulator进行计算,
+        // 但是并发这种情况下如果没有 锁的情况下,可能造成了并发异常
     }
 
     public static void main(String[] args) {
-        int count = 100;
+        System.out.println("超线程数: "+Runtime.getRuntime().availableProcessors());
+
+        int count = 1;
         for (int i = 0; i <count; i++) {
             List<String> list = Arrays.asList("hello", "world", "welcome","zairian","lisa",
                     "wadge","zambia","cc","b","d");
@@ -2866,7 +2911,17 @@ public class CustomizeCollector2<T> implements Collector<T, Set<T>, Map<T,T>> {
 //        Map<String, String> map = set.stream().collect(new CustomizeCollector2<>());
             //并行流
             Map<String, String> map = set.parallelStream().collect(new CustomizeCollector2<>());
-            System.out.println(map);
+            // 再上面的characteristics中如果不加上了CONCURRENT,
+            // 还是可以使用并行流只不过这个并行流操作的就不是一个结果容器了,而是多个结果容器了,
+            // 也就是说有多少个线程就有多少个结果容器被操作。
+            // 如果加上CONCURRENT,就表示多个线程操作一个结果容器，那么最终的结果容器只有一个。
+            // 如果结果容器只有一个，那么多个线程操作一个结果容器，combiner就无需合并了
+//            System.out.println(map);
+
+//            Map<String, String> map = set.stream().
+//                    parallel().sequential().parallel().collect(new CustomizeCollector2<>());
+            // 这里的这种写法,看最后一个串行的还是并行的,
+            // 如果最后一个parallel就是并行,如果是sequential那么就是串行的
         }
 
     }
@@ -2874,14 +2929,1620 @@ public class CustomizeCollector2<T> implements Collector<T, Set<T>, Map<T,T>> {
 
 
 ```
+22、Collectors工厂类源码分析与实战
+```
+收集器:
+对于Collectors静态工厂类来说,其实现一共分为两种情况:
+1、通过CollectorImpl来实现。
+2、通过reducing方法来实现, reducing方法本身有通过CollectorImpl实现的。
+
+
+static class CollectorImpl<T, A, R> implements Collector<T, A, R> {
+        private final Supplier<A> supplier;
+        private final BiConsumer<A, T> accumulator;
+        private final BinaryOperator<A> combiner;
+        private final Function<A, R> finisher;
+        private final Set<Characteristics> characteristics;
+
+        CollectorImpl(Supplier<A> supplier,
+                      BiConsumer<A, T> accumulator,
+                      BinaryOperator<A> combiner,
+                      Function<A,R> finisher,
+                      Set<Characteristics> characteristics) {
+            this.supplier = supplier;
+            this.accumulator = accumulator;
+            this.combiner = combiner;
+            this.finisher = finisher;
+            this.characteristics = characteristics;
+        }
+
+        CollectorImpl(Supplier<A> supplier,
+                      BiConsumer<A, T> accumulator,
+                      BinaryOperator<A> combiner,
+                      Set<Characteristics> characteristics) {
+            this(supplier, accumulator, combiner, castingIdentity(), characteristics);
+        }
+
+        @Override
+        public BiConsumer<A, T> accumulator() {
+            return accumulator;
+        }
+
+        @Override
+        public Supplier<A> supplier() {
+            return supplier;
+        }
+
+        @Override
+        public BinaryOperator<A> combiner() {
+            return combiner;
+        }
+
+        @Override
+        public Function<A, R> finisher() {
+            return finisher;
+        }
+
+        @Override
+        public Set<Characteristics> characteristics() {
+            return characteristics;
+        }
+    }
+
+
+
+/**
+     * Returns a {@code Collector} that accumulates the input elements into a
+     * new {@code Collection}, in encounter order.  The {@code Collection} is
+     * created by the provided factory.
+     *
+     * @param <T> the type of the input elements
+     * @param <C> the type of the resulting {@code Collection}
+     * @param collectionFactory a {@code Supplier} which returns a new, empty
+     * {@code Collection} of the appropriate type
+     * @return a {@code Collector} which collects all the input elements into a
+     * {@code Collection}, in encounter order
+     */
+    这个方法更为广泛和通用
+    public static <T, C extends Collection<T>>
+    Collector<T, ?, C> toCollection(Supplier<C> collectionFactory) {
+        对于这个方法必须要接收一个参数collectionFactory, 因为这个参数用于指定中间结果容器以及最终所返回的结果的集合类型,所以需要自己提供
+        如果要返回一个LinkList那么就传入一个LinkList::new 那么就可以用这个方法
+        return new CollectorImpl<>(collectionFactory, Collection<T>::add,
+                                   (r1, r2) -> { r1.addAll(r2); return r1; },
+                                   CH_ID);
+    }
+
+    /**
+     * Returns a {@code Collector} that accumulates the input elements into a
+     * new {@code List}. There are no guarantees on the type, mutability,
+     * serializability, or thread-safety of the {@code List} returned; if more
+     * control over the returned {@code List} is required, use {@link #toCollection(Supplier)}.
+     *
+     * @param <T> the type of the input elements
+     * @return a {@code Collector} which collects all the input elements into a
+     * {@code List}, in encounter order
+     */
+    public static <T>
+    Collector<T, ?, List<T>> toList() {
+        //对toList进行分析 
+        // 首先CollectorImpl 实现类中有几个参数,
+         supplier用于生产中间结果容器的 、
+         accumulator累加器、
+         combiner合并器、
+         finisher完成器、
+         characteristics 特性。
+        // 它的实现如下,
+        第一个参数是supplier,然后它用 ArrayList::new 强制的转换为(Supplier<List<T>>)。实际上它也可以这样写ArrayList<T>::new。
+        第二个参数是accumulator累加器, 累积器是不断往中间结果中添加,这里调用List::add方法引用,传进来的第一次参数作为add方法的调用者,第二个参数作为add的参数
+        第三个参数combiner合并器,这里使用lambda表达式(left, right) -> { left.addAll(right); return left; } 这里是将后面的部分结果right添加到第一个left中 然后返回left
+        第四个参数CH_ID是个常量, 这个常量里面定义的是IDENTITY_FINISH,也就是说中间结果类型和最终的结果类型是同一个类型,
+        也就是说toList()方法是不需要finisher的。
+        return new CollectorImpl<>((Supplier<List<T>>) ArrayList::new, List::add,
+                                   (left, right) -> { left.addAll(right); return left; },
+                                   CH_ID);
+    }
+
+
+  /**
+     * Returns a {@code Collector} that accumulates the input elements into a
+     * new {@code Set}. There are no guarantees on the type, mutability,
+     * serializability, or thread-safety of the {@code Set} returned; if more
+     * control over the returned {@code Set} is required, use
+     * {@link #toCollection(Supplier)}.
+     *
+     * <p>This is an {@link Collector.Characteristics#UNORDERED unordered}
+     * Collector.
+     *
+     * @param <T> the type of the input elements
+     * @return a {@code Collector} which collects all the input elements into a
+     * {@code Set}
+     */
+     // toSet()也是一种特化版本
+    public static <T>
+    Collector<T, ?, Set<T>> toSet() {
+        // 首先中间结果容器是 set类型, 累加器是 Set::add, 
+        然后合并器(left, right) -> { left.addAll(right); return left; }
+        characteristics 特性是UNORDERED和IDENTITY_FINISH, 这说明是无序的同时 中间结果类型和最终结果类型是一致的
+      
+        return new CollectorImpl<>((Supplier<Set<T>>) HashSet::new, Set::add,
+                                   (left, right) -> { left.addAll(right); return left; },
+                                   CH_UNORDERED_ID);
+    }
+
+
+/**
+     * Returns a {@code Collector} that concatenates the input elements into a
+     * {@code String}, in encounter order.
+     *
+     * @return a {@code Collector} that concatenates the input elements into a
+     * {@code String}, in encounter order
+     */
+      将多个字符串拼接,不用任何的分割符 分割
+    public static Collector<CharSequence, ?, String> joining() {
+        //首先new CollectorImpl(), 三个参数
+         第一个是流中元素类是CharSequence
+         第二个是中间结果容器 StringBuilder
+         第三个是结果String, 这里可以知道StringBuilder和String类型不一样,中间结果类型和最终结果类型是不一致的。
+         所以要使用finisher
+        实现 首先 
+         第一个参数 supplier 调用StringBuilder::new,
+         第二个参数 accumulator累加器 StringBuilder::append 使用append不断往StringBuilder追加
+         第三个参数 combiner合并器 (r1, r2) -> { r1.append(r2); return r1; } r2不断的append到r1中 然后返回r1,
+         第四个参数 finisher完成器 StringBuilder::toString 这里要使用的原因是类型不一致 所以相当于把StringBuilder转换成字符串,
+         第五个参数 characteristics 特性CH_NOID 表示三个特性都不具备。
+        return new CollectorImpl<CharSequence, StringBuilder, String>(
+                StringBuilder::new, StringBuilder::append,
+                (r1, r2) -> { r1.append(r2); return r1; },
+                StringBuilder::toString, CH_NOID);
+    }
+
+
+/**
+     * Returns a {@code Collector} that concatenates the input elements,
+     * separated by the specified delimiter, in encounter order.
+     *
+     * @param delimiter the delimiter to be used between each element
+     * @return A {@code Collector} which concatenates CharSequence elements,
+     * separated by the specified delimiter, in encounter order
+     */
+    中间有分割符
+    public static Collector<CharSequence, ?, String> joining(CharSequence delimiter) {
+        return joining(delimiter, "", "");
+    }
+
+
+
+  /**
+     * Adapts a {@code Collector} accepting elements of type {@code U} to one
+     * accepting elements of type {@code T} by applying a mapping function to
+     * each input element before accumulation.
+     *
+     * @apiNote
+     * The {@code mapping()} collectors are most useful when used in a
+     * multi-level reduction, such as downstream of a {@code groupingBy} or
+     * {@code partitioningBy}.  For example, given a stream of
+     * {@code Person}, to accumulate the set of last names in each city:
+     * <pre>{@code
+     *     Map<City, Set<String>> lastNamesByCity
+     *         = people.stream().collect(groupingBy(Person::getCity,
+     *                                              mapping(Person::getLastName, toSet())));
+     * }</pre>
+     *
+     * @param <T> the type of the input elements
+     * @param <U> type of elements accepted by downstream collector
+     * @param <A> intermediate accumulation type of the downstream collector
+     * @param <R> result type of collector
+     * @param mapper a function to be applied to the input elements
+     * @param downstream a collector which will accept mapped values
+     * @return a collector which applies the mapping function to the input
+     * elements and provides the mapped results to the downstream collector
+     */
+   // 这个方法就是映射, 适配一个Collector接收一个U类型的把它适配到一个T类型的, 也就是说这个收集器接收一个类型的你把它映射成另外的一个类型，
+        在累积之前都应用一个映射函数。
+    public static <T, U, A, R>
+    Collector<T, ?, R> mapping(Function<? super T, ? extends U> mapper,
+                               Collector<? super U, A, R> downstream) {
+        BiConsumer<A, ? super U> downstreamAccumulator = downstream.accumulator();
+        return new CollectorImpl<>(downstream.supplier(),
+                                   (r, t) -> downstreamAccumulator.accept(r, mapper.apply(t)),
+                                   downstream.combiner(), downstream.finisher(),
+                                   downstream.characteristics());
+    }
+
+
+
+/**
+     * Adapts a {@code Collector} to perform an additional finishing
+     * transformation.  For example, one could adapt the {@link #toList()}
+     * collector to always produce an immutable list with:
+     * <pre>{@code
+     *     List<String> people
+     *         = people.stream().collect(collectingAndThen(toList(), Collections::unmodifiableList));
+          首先收集并处理，先收集一个list,然后再去处理 把它转换成Collections::unmodifiableList 不可变列表
+     * }</pre>
+     *
+     * @param <T> the type of the input elements
+     * @param <A> intermediate accumulation type of the downstream collector
+     * @param <R> result type of the downstream collector
+     * @param <RR> result type of the resulting collector
+     * @param downstream a collector
+     * @param finisher a function to be applied to the final result of the downstream collector
+     * @return a collector which performs the action of the downstream collector,
+     * followed by an additional finishing step
+     */
+   接收一个Collector去执行额外的转换。
+    接收两个参数一个downstream, 一个finisher。 先去应用downstream 等应用完了之后再去应用finisher
+    public static<T,A,R,RR> Collector<T,A,RR> collectingAndThen(Collector<T,A,R> downstream,
+                                                                Function<R,RR> finisher) {
+        获取特性集合
+        Set<Collector.Characteristics> characteristics = downstream.characteristics();
+        if (characteristics.contains(Collector.Characteristics.IDENTITY_FINISH)) {
+            if (characteristics.size() == 1)
+                characteristics = Collectors.CH_NOID;
+            else {
+                characteristics = EnumSet.copyOf(characteristics);
+                // 这里将IDENTITY_FINISH去掉的
+                // 其含义是 如果强制进行转换那么就不会执行finisher, 但是这里需要执行finisher所以将。
+                // IDENTITY_FINISH移除
+                characteristics.remove(Collector.Characteristics.IDENTITY_FINISH);
+                characteristics = Collections.unmodifiableSet(characteristics);
+            }
+        }
+        return new CollectorImpl<>(downstream.supplier(),
+                                   downstream.accumulator(),
+                                   downstream.combiner(),
+                                   downstream.finisher().andThen(finisher),
+                                   characteristics);
+    }
+
+
+ /**
+     * Returns a {@code Collector} accepting elements of type {@code T} that
+     * counts the number of input elements.  If no elements are present, the
+     * result is 0.
+     *
+     * @implSpec
+     * This produces a result equivalent to:
+     * <pre>{@code
+     *     reducing(0L, e -> 1L, Long::sum)
+     * }</pre>
+     *
+     * @param <T> the type of the input elements
+     * @return a {@code Collector} that counts the input elements
+     */
+    // 计算
+    public static <T> Collector<T, ?, Long>
+    counting() {
+        // 调用reducing 方法 , 第一个初始值是0L, 第二个映射是 e -> 1L 给定一个元素都返回1, 
+         第三个 将所有的1加起来。
+        return reducing(0L, e -> 1L, Long::sum);
+    }
+
+
+   /**
+     * Returns a {@code Collector} that produces the sum of a integer-valued
+     * function applied to the input elements.  If no elements are present,
+     * the result is 0.
+     *
+     * @param <T> the type of the input elements
+     * @param mapper a function extracting the property to be summed
+     * @return a {@code Collector} that produces the sum of a derived property
+     */
+   将ToIntFunction应用到stream中的每一个元素上 得到一个整型的结果，然后把这个整型的结果求和，
+   如果没有元素存在那么结果就是0
+    public static <T> Collector<T, ?, Integer>
+    summingInt(ToIntFunction<? super T> mapper) {
+        return new CollectorImpl<>(
+                // 这里为什么定义一个整型数组,为什么不直接定义一个整型数字? 
+                // 如果这里使用的是一个整型数字,但是数字是无法传递的,数字本身是一个值类型的,
+                // 而数组是一个引用类型的。 如果这里返回一个数字的话那么这样就返回一个固定的不可变的,
+                // 那么怎么将这个数字传递到下面去喃,是传递不了的。 
+                // 如果使用数组就可以,因为数组本身是一个引用,把这个数组传递过去是可以的。
+                // 同时对于收集器来说中间收集器应该是一个容器就是它可以容纳东西的容器。
+                // 而数组本身是容器,但是呢并不是说往数组里面添加新的东西而是从数组中取出它唯一的元素也就a[0],
+                // 然后不断的给a[0]的值往上累加使得这个a[0]的值不断变化。
+                () -> new int[1],
+                (a, t) -> { a[0] += mapper.applyAsInt(t); },
+                (a, b) -> { a[0] += b[0]; return a; },
+                a -> a[0], CH_NOID);
+    }
+
+
+ /**
+     * Returns a {@code Collector} that produces the arithmetic mean of an integer-valued
+     * function applied to the input elements.  If no elements are present,
+     * the result is 0.
+     *
+     * @param <T> the type of the input elements
+     * @param mapper a function extracting the property to be summed
+     * @return a {@code Collector} that produces the sum of a derived property
+     */
+    public static <T> Collector<T, ?, Double>
+    averagingInt(ToIntFunction<? super T> mapper) {
+        return new CollectorImpl<>(
+                () -> new long[2],
+                  // a[0]是总数, a[1]是个数
+                (a, t) -> { a[0] += mapper.applyAsInt(t); a[1]++; },
+                (a, b) -> { a[0] += b[0]; a[1] += b[1]; return a; },
+                // 如果a[1]个数为零,那么就等于0,如果不等于零,那么就用a[0]/a[1] = 总数/个数
+                a -> (a[1] == 0) ? 0.0d : (double) a[0] / a[1], CH_NOID);
+    }
+```
+22.1、Collectors工厂类源码之 _reducing,_groupingBy,_partitioningBy分析
+```
+ /**
+     * Returns a {@code Collector} implementing a "group by" operation on
+     * input elements of type {@code T}, grouping elements according to a
+     * classification function, and returning the results in a {@code Map}.
+     *
+     * <p>The classification function maps elements to some key type {@code K}.
+     * The collector produces a {@code Map<K, List<T>>} whose keys are the
+     * values resulting from applying the classification function to the input
+     * elements, and whose corresponding values are {@code List}s containing the
+     * input elements which map to the associated key under the classification
+     * function.
+     *
+     * <p>There are no guarantees on the type, mutability, serializability, or
+     * thread-safety of the {@code Map} or {@code List} objects returned.
+     * @implSpec
+     * This produces a result similar to:
+     * <pre>{@code
+     *     groupingBy(classifier, toList());
+     * }</pre>
+     *
+     * @implNote
+     * The returned {@code Collector} is not concurrent.  For parallel stream
+     * pipelines, the {@code combiner} function operates by merging the keys
+     * from one map into another, which can be an expensive operation.  If
+     * preservation of the order in which elements appear in the resulting {@code Map}
+     * collector is not required, using {@link #groupingByConcurrent(Function)}
+     * may offer better parallel performance.
+     *
+     * @param <T> the type of the input elements
+     * @param <K> the type of the keys
+     * @param classifier the classifier function mapping input elements to keys
+     * @return a {@code Collector} implementing the group-by operation
+     *
+     * @see #groupingBy(Function, Collector)
+     * @see #groupingBy(Function, Supplier, Collector)
+     * @see #groupingByConcurrent(Function)
+     */
+    public static <T, K> Collector<T, ?, Map<K, List<T>>>
+    // 输入类型是T以及T之上的类型, 返回类型是k以及k之下的类型。
+    groupingBy(Function<? super T, ? extends K> classifier) {
+        // 第一个参数是一个function对象,第二个是一个Collector对象
+        return groupingBy(classifier, toList());
+    }
+
+ /**
+     * Returns a {@code Collector} implementing a cascaded "group by" operation
+     * on input elements of type {@code T}, grouping elements according to a
+     * classification function, and then performing a reduction operation on
+     * the values associated with a given key using the specified downstream
+     * {@code Collector}.
+     *
+     * <p>The classification function maps elements to some key type {@code K}.
+     * The downstream collector operates on elements of type {@code T} and
+     * produces a result of type {@code D}. The resulting collector produces a
+     * {@code Map<K, D>}.
+     *
+     * <p>There are no guarantees on the type, mutability,
+     * serializability, or thread-safety of the {@code Map} returned.
+     *
+     * <p>For example, to compute the set of last names of people in each city:
+     * <pre>{@code
+     *     Map<City, Set<String>> namesByCity
+     *         = people.stream().collect(groupingBy(Person::getCity,
+     *                                              mapping(Person::getLastName, toSet())));
+     * }</pre>
+     *
+     * @implNote
+     * The returned {@code Collector} is not concurrent.  For parallel stream
+     * pipelines, the {@code combiner} function operates by merging the keys
+     * from one map into another, which can be an expensive operation.  If
+     * preservation of the order in which elements are presented to the downstream
+     * collector is not required, using {@link #groupingByConcurrent(Function, Collector)}
+     * may offer better parallel performance.
+     *
+     * @param <T> the type of the input elements
+     * @param <K> the type of the keys
+     * @param <A> the intermediate accumulation type of the downstream collector
+     * @param <D> the result type of the downstream reduction
+     * @param classifier a classifier function mapping input elements to keys
+     * @param downstream a {@code Collector} implementing the downstream reduction
+     * @return a {@code Collector} implementing the cascaded group-by operation
+     * @see #groupingBy(Function)
+     *
+     * @see #groupingBy(Function, Supplier, Collector)
+     * @see #groupingByConcurrent(Function, Collector)
+     */
+    //这个方法本身是返回一个收集器Collector, 而且也会传入一个收集器downstream来使用,
+      //那么使用的这个收集器可以认为是一个下游,返回的可以认为是一个上游
+     // 构造思路是downstream本身是一个收集器,
+     // 既然是一收集器所以它有Supplier、accumulator、combiner和一个可以选的finisher,
+     //既然具备了收集器所具有的全部元素,那么它又提供了Function分类器这样一个函数,
+     它实际上就是将这个分类器函数给应用到收集器中,使得对收集器的中间收集过程进行了一系列的转换,
+      那么最终转换成的一个收集器就是这个方法返回的结果Collector<T, ?, Map<K, D>>.
+     T类型表示stream流中元素类型,
+     K类型表示分类器所返回的那个结果的类型,换句话说k就是所返回的那个map的key.
+     D类型表示返回map的值类型。
+ public static <T, K, A, D>
+    Collector<T, ?, Map<K, D>> groupingBy(Function<? super T, ? extends K> classifier,
+                                          Collector<? super T, A, D> downstream) {
+          
+        return groupingBy(classifier, HashMap::new, downstream);
+    }
+
+
+
+  /**
+     * Returns a {@code Collector} implementing a cascaded "group by" operation
+     * on input elements of type {@code T}, grouping elements according to a
+     * classification function, and then performing a reduction operation on
+     * the values associated with a given key using the specified downstream
+     * {@code Collector}.  The {@code Map} produced by the Collector is created
+     * with the supplied factory function.
+     *
+     * <p>The classification function maps elements to some key type {@code K}.
+     * The downstream collector operates on elements of type {@code T} and
+     * produces a result of type {@code D}. The resulting collector produces a
+     * {@code Map<K, D>}.
+     *
+     * <p>For example, to compute the set of last names of people in each city,
+     * where the city names are sorted:
+     * <pre>{@code
+     *     Map<City, Set<String>> namesByCity
+                 // 第一个参数就是分类器,也就是这个例子中调用getCity的返回结果,实际上就是city对象
+                 //第二个参数这里传入的是TreeMap::new, 这个实际上就传递给Supplier<M> mapFactory
+                 //第三个是mapping,这个mapping是collector中提供的映射函数,
+                   将一个类型映射成一个结果的,最终得到一个收集器toSet()。
+     *         = people.stream().collect(groupingBy(Person::getCity, TreeMap::new,
+     *                                              mapping(Person::getLastName, toSet())));
+     * }</pre>
+     *
+     * @implNote
+     * The returned {@code Collector} is not concurrent.  For parallel stream
+     * pipelines, the {@code combiner} function operates by merging the keys
+     * from one map into another, which can be an expensive operation.  If
+     * preservation of the order in which elements are presented to the downstream
+     * collector is not required, using {@link #groupingByConcurrent(Function, Supplier, Collector)}
+     * may offer better parallel performance.
+     *
+     * @param <T> the type of the input elements
+     * @param <K> the type of the keys
+     * @param <A> the intermediate accumulation type of the downstream collector
+     * @param <D> the result type of the downstream reduction
+     * @param <M> the type of the resulting {@code Map}
+     * @param classifier a classifier function mapping input elements to keys
+     * @param downstream a {@code Collector} implementing the downstream reduction
+     * @param mapFactory a function which, when called, produces a new empty
+     *                   {@code Map} of the desired type
+     * @return a {@code Collector} implementing the cascaded group-by operation
+     *
+     * @see #groupingBy(Function, Collector)
+     * @see #groupingBy(Function)
+     * @see #groupingByConcurrent(Function, Supplier, Collector)
+     */
+    public static <T, K, D, A, M extends Map<K, D>>
+    Collector<T, ?, M> groupingBy(Function<? super T, ? extends K> classifier,
+                                  Supplier<M> mapFactory,
+                                  Collector<? super T, A, D> downstream) {
+        // 获取下游流的Supplier
+        Supplier<A> downstreamSupplier = downstream.supplier();
+        // 得到一个累加器对象。 这样做的目的就是从downstream中的5个方法来最终得到新的一个collectorImpl对象
+        // 那么collectorimpl对象就要提供那5个方法来构造 collectorimpl对象。
+        // 所以先获取下游的两个对象来去构造这个方法本身应该返回的那个collector对象
+        BiConsumer<A, ? super T> downstreamAccumulator = downstream.accumulator();
+        //这里开始进行构造accumulator对象,这个对象是借助下游收集器的累加器对象来进行构造的
+        BiConsumer<Map<K, A>, T> accumulator = (m, t) -> {
+            K key = Objects.requireNonNull(classifier.apply(t), "element cannot be mapped to a null key");
+            A container = m.computeIfAbsent(key, k -> downstreamSupplier.get());
+            // container表示中间容器, t表示流中元素类型 
+            downstreamAccumulator.accept(container, t);
+        };
+        //将部分结果合并到一起
+        BinaryOperator<Map<K, A>> merger = Collectors.<K, A, Map<K, A>>mapMerger(downstream.combiner());
+        @SuppressWarnings("unchecked")
+        // mapFactory 是一个Supplier对象调用get方法返回中间结果类型,而中间结果类型是Map<K, A>类型,
+        // 所以强制的转换成Map<K, A>类型是可以转换的
+        Supplier<Map<K, A>> mangledFactory = (Supplier<Map<K, A>>) mapFactory;
+
+        if (downstream.characteristics().contains(Collector.Characteristics.IDENTITY_FINISH)) {
+            return new CollectorImpl<>(mangledFactory, accumulator, merger, CH_ID);
+        }
+        else {
+            @SuppressWarnings("unchecked")
+            Function<A, A> downstreamFinisher = (Function<A, A>) downstream.finisher();
+            Function<Map<K, A>, M> finisher = intermediate -> {
+                  //接收两个参数,返回一个结果
+                intermediate.replaceAll((k, v) -> downstreamFinisher.apply(v));
+                @SuppressWarnings("unchecked")
+                M castResult = (M) intermediate;
+                return castResult;
+            };
+            return new CollectorImpl<>(mangledFactory, accumulator, merger, finisher, CH_NOID);
+        }
+    }
+
+
+    /**
+     * Returns a {@code Collector} which partitions the input elements according
+     * to a {@code Predicate}, reduces the values in each partition according to
+     * another {@code Collector}, and organizes them into a
+     * {@code Map<Boolean, D>} whose values are the result of the downstream
+     * reduction.
+     *
+     * <p>There are no guarantees on the type, mutability,
+     * serializability, or thread-safety of the {@code Map} returned.
+     *
+     * @param <T> the type of the input elements
+     * @param <A> the intermediate accumulation type of the downstream collector
+     * @param <D> the result type of the downstream reduction
+     * @param predicate a predicate used for classifying input elements
+     * @param downstream a {@code Collector} implementing the downstream
+     *                   reduction
+     * @return a {@code Collector} implementing the cascaded partitioning
+     *         operation
+     *
+     * @see #partitioningBy(Predicate)
+     */
+    public static <T, D, A>
+    Collector<T, ?, Map<Boolean, D>> partitioningBy(Predicate<? super T> predicate,
+                                                    Collector<? super T, A, D> downstream) {
+        BiConsumer<A, ? super T> downstreamAccumulator = downstream.accumulator();
+        BiConsumer<Partition<A>, T> accumulator = (result, t) ->
+                downstreamAccumulator.accept(predicate.test(t) ? result.forTrue : result.forFalse, t);
+        BinaryOperator<A> op = downstream.combiner();
+        BinaryOperator<Partition<A>> merger = (left, right) ->
+                new Partition<>(op.apply(left.forTrue, right.forTrue),
+                                op.apply(left.forFalse, right.forFalse));
+        Supplier<Partition<A>> supplier = () ->
+                  //分成两组,这里没有使用map是因为没法限制它有几组元素,
+                  // 所以这里就没有使用map作为返回结果,而是自己定义了一个私有的静态类去描述这个结果。
+                  // 而这个私有静态内部类把最终结果分为两部分,一部分是真的,一部分是假的。
+                new Partition<>(downstream.supplier().get(),
+                                downstream.supplier().get());
+        if (downstream.characteristics().contains(Collector.Characteristics.IDENTITY_FINISH)) {
+            return new CollectorImpl<>(supplier, accumulator, merger, CH_ID);
+        }
+        else {
+            Function<Partition<A>, Map<Boolean, D>> finisher = par ->
+                    new Partition<>(downstream.finisher().apply(par.forTrue),
+                                    downstream.finisher().apply(par.forFalse));
+            return new CollectorImpl<>(supplier, accumulator, merger, finisher, CH_NOID);
+        }
+    }
+```
+
+23、Stream 和 baseStream 源码分析
+```
+
+public interface Stream<T> extends BaseStream<T, Stream<T>>
+
+S表示 BaseStream<T,S>类型的下级,从上面的Stream<T>可以知道到,这个实现符合BaseStream中S的规定,
+Stream<T>中S的类型就是Stream<T>类型
+public interface BaseStream<T, S extends BaseStream<T, S>
+
+```
+23.1 Spliterator 分割迭代器
+```
+/**
+     * Creates a {@link Spliterator} over the elements in this collection.
+     *
+     * Implementations should document characteristic values reported by the
+     * spliterator.  Such characteristic values are not required to be reported
+     * if the spliterator reports {@link Spliterator#SIZED} and this collection
+     * contains no elements.
+     *
+     * <p>The default implementation should be overridden by subclasses that
+     * can return a more efficient spliterator.  In order to
+     * preserve expected laziness behavior for the {@link #stream()} and
+     * {@link #parallelStream()}} methods, spliterators should either have the
+     * characteristic of {@code IMMUTABLE} or {@code CONCURRENT}, or be
+     * <em><a href="Spliterator.html#binding">late-binding</a></em>.
+     * If none of these is practical, the overriding class should describe the
+     * spliterator's documented policy of binding and structural interference,
+     * and should override the {@link #stream()} and {@link #parallelStream()}
+     * methods to create streams using a {@code Supplier} of the spliterator,
+     * as in:
+     * <pre>{@code
+     *     Stream<E> s = StreamSupport.stream(() -> spliterator(), spliteratorCharacteristics)
+     * }</pre>
+     * <p>These requirements ensure that streams produced by the
+     * {@link #stream()} and {@link #parallelStream()} methods will reflect the
+     * contents of the collection as of initiation of the terminal stream
+     * operation.
+     *
+     * @implSpec
+     * The default implementation creates a
+        默认实现会创建一个 延迟绑定(late-binding) 的 spliterator,
+        是从集合的Iterator(迭代器)创建的一个延迟绑定的分割迭代器。
+       创建出来的分割迭代器会继承集合迭代器的 快速失败(遇到问题抛出异常不在往下走了)的属性。
+     * <em><a href="Spliterator.html#binding">late-binding</a></em> spliterator
+     * from the collections's {@code Iterator}.  The spliterator inherits the
+     * <em>fail-fast</em> properties of the collection's iterator.
+     * <p>
+     * The created {@code Spliterator} reports {@link Spliterator#SIZED}.
+     *
+     * @implNote
+     * The created {@code Spliterator} additionally reports
+       创建出来的Spliterator会额外的增加一个SUBSIZED这样一个特性。Spliterator分割后会生成若干个块,
+         那么每一个块的大小又是确定的这个就称为 SUBSIZED。
+     * {@link Spliterator#SUBSIZED}.
+     *
+     * <p>If a spliterator covers no elements then the reporting of additional
+     * characteristic values, beyond that of {@code SIZED} and {@code SUBSIZED},
+     * does not aid clients to control, specialize or simplify computation.
+     * However, this does enable shared use of an immutable and empty
+     * spliterator instance (see {@link Spliterators#emptySpliterator()}) for
+     * empty collections, and enables clients to determine if such a spliterator
+     * covers no elements.
+     *
+     * @return a {@code Spliterator} over the elements in this collection
+     * @since 1.8
+     */
+    @Override
+    default Spliterator<E> spliterator() {
+        return Spliterators.spliterator(this, 0);
+    }
+
+
+
+ /**
+     专门为原生值设定的分割迭代器
+     * A Spliterator specialized for primitive values.
+         
+     *  这个T类型必须是原生类型的包装类型,比如说针对于原生类型的int,对于的Integer
+     * @param <T> the type of elements returned by this Spliterator.  The
+     * type must be a wrapper type for a primitive type, such as {@code Integer}
+     * for the primitive {@code int} type.
+         
+    针对原生类型特化的consumer
+     * @param <T_CONS> the type of primitive consumer.  The type must be a
+     * primitive specialization of {@link java.util.function.Consumer} for
+     * {@code T}, such as {@link java.util.function.IntConsumer} for
+     * {@code Integer}.
+      原生的分割迭代器类型 
+     * @param <T_SPLITR> the type of primitive Spliterator.  The type must be
+     * a primitive specialization of Spliterator for {@code T}, such as
+     * {@link Spliterator.OfInt} for {@code Integer}.
+     *
+     * @see Spliterator.OfInt
+     * @see Spliterator.OfLong
+     * @see Spliterator.OfDouble
+     * @since 1.8
+     */
+    public interface OfPrimitive<T, T_CONS, T_SPLITR extends Spliterator.OfPrimitive<T, T_CONS, T_SPLITR>>
+            extends Spliterator<T> {
+
+}
+
+
+
+/**
+     * A Spliterator specialized for {@code int} values.
+     * @since 1.8
+     */
+      // T就是Integer类型, T_CONS是 IntConsumer类型, T_SPLITR是ofInt类型
+    public interface OfInt extends OfPrimitive<Integer, IntConsumer, OfInt> {
+        @Override
+        OfInt trySplit();
+
+        //这个tryAdvance的顶层是OfPrimitive
+        @Override
+        boolean tryAdvance(IntConsumer action);
+
+        @Override
+        default void forEachRemaining(IntConsumer action) {
+            do { } while (tryAdvance(action));
+        }
+
+        /**
+         * {@inheritDoc}
+         * @implSpec
+         * If the action is an instance of {@code IntConsumer} then it is cast
+         * to {@code IntConsumer} and passed to
+           如果这个action是IntConsumer的实例的话那么他会强制的转换为IntConsumer然后传递个
+           tryAdvance。
+         * {@link #tryAdvance(java.util.function.IntConsumer)}; otherwise
+         * the action is adapted to an instance of {@code IntConsumer}, by
+         * boxing the argument of {@code IntConsumer}, and then passed to
+         * {@link #tryAdvance(java.util.function.IntConsumer)}.
+             否则这个action会被适配为IntConsumer实例,方式是通过对于IntConsumer的装箱
+            然后再将它传递给上面的tryAdvance方法
+         */
+        @Override
+        // 这个tryAdvance的顶层是Spliterator
+        default boolean tryAdvance(Consumer<? super Integer> action) {
+               // 这里为什么能判断 action是 IntConsumer呢？ 而且 IntConsumer和 Consumer
+                  并没有继承关系。那么为什么能转换的呢？
+               // 个人猜测这里是因为action中 ? 是Integer或者 Integer的上级,
+               // 然后这里用action来判断是不是为IntConsumer。是为向上转型的操作吧 
+               // 实际上 Consumer接口中接收的参数是accept(T t);
+                 而IntConsumer中接收的餐是accept(int t)。
+                因此Consumer和IntConsumer在参数T是Int/Integer是时候作用会重叠。
+               为什么会重叠呢,这是因为JAVA中存在自动装箱和拆箱的操作。
+                                               
+            if (action instanceof IntConsumer) {
+                return tryAdvance((IntConsumer) action);
+            }
+            else {
+                if (Tripwire.ENABLED)
+                    Tripwire.trip(getClass(),
+                                  "{0} calling Spliterator.OfInt.tryAdvance((IntConsumer) action::accept)");
+               // 对于lambda表达式的信息都是通过上下文推测出来的
+                return tryAdvance((IntConsumer) action::accept);
+            }
+        }
+
+        /**
+         * {@inheritDoc}
+         * @implSpec
+         * If the action is an instance of {@code IntConsumer} then it is cast
+         * to {@code IntConsumer} and passed to
+         * {@link #forEachRemaining(java.util.function.IntConsumer)}; otherwise
+         * the action is adapted to an instance of {@code IntConsumer}, by
+         * boxing the argument of {@code IntConsumer}, and then passed to
+         * {@link #forEachRemaining(java.util.function.IntConsumer)}.
+         */
+        //遍历后面所有的
+        @Override
+        default void forEachRemaining(Consumer<? super Integer> action) {
+              //action传递的即可能是一个引用也可能传递的是一个lambda表达式,
+              // 如果传递的是lambda表达式 那么符合Consumer接口的要求,也符合IntConsumer的要求
+            if (action instanceof IntConsumer) {
+                forEachRemaining((IntConsumer) action);
+            }
+            else {
+                if (Tripwire.ENABLED)
+                    Tripwire.trip(getClass(),
+                                  "{0} calling Spliterator.OfInt.forEachRemaining((IntConsumer) action::accept)");
+                 // 如果不是IntConsumer那么传递了一个 方法引用, 方法引用本身就是lambda表达式
+                 // 当点击accept时会进入 Consumer接口中去,当点击:: 会进入IntConsumer中去
+                 // 这是因为进行强制转换
+                forEachRemaining((IntConsumer) action::accept);
+            }
+        }
+}
+```
+
+23.2 、通过Consumer例子来 理解OfInt中 tryAdvance方法中的转换
+```java
+package com.learn.jdk.chapter40;
+
+import java.util.function.Consumer;
+import java.util.function.IntConsumer;
+
+/**
+ * chapter40
+ * @ClassName: ConsumerTest
+ * @Description: Consumer 和 IntConsumer
+ * @Author: lin
+ * @Date: 2020/1/17 15:02
+ * History:
+ * @<version> 1.0
+ */
+public class ConsumerTest {
+
+    public void test(Consumer<Integer> consumer){
+        consumer.accept(100);
+    }
+
+    public static void main(String[] args) {
+        ConsumerTest consumerTest = new ConsumerTest();
+         // 定义一个lambda表达式 既可以赋值给Consumer对象,也可以赋值给IntConsumer对象
+        Consumer<Integer> consumer = i -> System.out.println(i);
+        IntConsumer intConsumer = i -> System.out.println(i);
+
+        System.out.println(consumer instanceof Consumer);
+        System.out.println(intConsumer instanceof IntConsumer);
+
+         // 面向对象的方式
+         consumerTest.test(consumer);
+          //运行报错,intConsumer是lambda表达式是不能转换为Consumer对象的
+//         consumerTest.test((Consumer) intConsumer);
+
+         //函数式方式
+         consumerTest.test(consumer::accept);
+         //函数式方式
+         consumerTest.test(intConsumer::accept);
+    }
+
+}
+
+```
+
+24、ReferencePipeline和AbstractPipeline源码分析
+```
+/**
+ 一个抽象的基类是一个中间管道阶段或者是管道源阶段 里面的元素类型是U类型
+ * Abstract base class for an intermediate pipeline stage or pipeline source
+ * stage implementing whose elements are of type {@code U}.
+ *
+ * @param <P_IN> type of elements in the upstream source
+ * @param <P_OUT> type of elements in produced by this stage
+ *
+ * @since 1.8
+ */
+abstract class ReferencePipeline<P_IN, P_OUT>
+        extends AbstractPipeline<P_IN, P_OUT, Stream<P_OUT>>
+        implements Stream<P_OUT>  {
 
 
 
 
 
 
+    /**
+       源阶段
+     * Source stage of a ReferencePipeline.
+     *
+     * @param <E_IN> type of elements in the upstream source
+               上游源元素类型
+     * @param <E_OUT> type of elements in produced by this stage
+               这个阶段源所 生成的元素类型。
+     * @since 1.8
+     */
+    static class Head<E_IN, E_OUT> extends ReferencePipeline<E_IN, E_OUT> {
+
+ /**
+         * Constructor for the source stage of a Stream.
+         *
+         * @param source {@code Supplier<Spliterator>} describing the stream
+         *               source
+         * @param sourceFlags the source flags for the stream source, described
+         *                    in {@link StreamOpFlag}
+         */
+        Head(Supplier<? extends Spliterator<?>> source,
+             int sourceFlags, boolean parallel) {
+            super(source, sourceFlags, parallel);
+        }
+
+        /**
+         * Constructor for the source stage of a Stream.
+         *
+         * @param source {@code Spliterator} describing the stream source
+         * @param sourceFlags the source flags for the stream source, described
+         *                    in {@link StreamOpFlag}
+         */
+        Head(Spliterator<?> source,
+             int sourceFlags, boolean parallel) {
+            super(source, sourceFlags, parallel);
+        }
+
+        @Override
+        final boolean opIsStateful() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        final Sink<E_IN> opWrapSink(int flags, Sink<E_OUT> sink) {
+            throw new UnsupportedOperationException();
+        }
+
+        // Optimized sequential terminal operations for the head of the pipeline
+           针对于管道源的一个优化的串行终止操作
+        // 也就是说在 被流的源对象所调用的时候,会直接调用这个forEach
+        // list.stream().forEach()
+         
+        @Override
+        public void forEach(Consumer<? super E_OUT> action) {
+            if (!isParallel()) {
+                sourceStageSpliterator().forEachRemaining(action);
+            }
+            else {
+                super.forEach(action);
+            }
+        }
+}
+
+
+
+/**
+ * Abstract base class for "pipeline" classes, which are the core
+ * implementations of the Stream interface and its primitive specializations.
+ * Manages construction and evaluation of stream pipelines.
+ *
+ * <p>An {@code AbstractPipeline} represents an initial portion of a stream
+ * pipeline, encapsulating a stream source and zero or more intermediate
+ * operations.  The individual {@code AbstractPipeline} objects are often
+ * referred to as <em>stages</em>, where each stage describes either the stream
+ * source or an intermediate operation.
+ *
+ * <p>A concrete intermediate stage is generally built from an
+ * {@code AbstractPipeline}, a shape-specific pipeline class which extends it
+ * (e.g., {@code IntPipeline}) which is also abstract, and an operation-specific
+ * concrete class which extends that.  {@code AbstractPipeline} contains most of
+ * the mechanics of evaluating the pipeline, and implements methods that will be
+ * used by the operation; the shape-specific classes add helper methods for
+ * dealing with collection of results into the appropriate shape-specific
+ * containers.
+ *
+ * <p>After chaining a new intermediate operation, or executing a terminal
+ * operation, the stream is considered to be consumed, and no more intermediate
+ * or terminal operations are permitted on this stream instance.
+ *
+ * @implNote
+ * <p>For sequential streams, and parallel streams without
+ * <a href="package-summary.html#StreamOps">stateful intermediate
+ * operations</a>, parallel streams, pipeline evaluation is done in a single
+  这里注意: 函数式编程的执行方式 比如在一个集合中取出1元素执行完了一趟操作完后再执行下一个元素
+  在24.1中的stream().map()...有解释 
+ * pass that "jams" all the operations together.  For parallel streams with
+
+ * stateful operations, execution is divided into segments, where each
+ * stateful operations marks the end of a segment, and each segment is
+ * evaluated separately and the result used as the input to the next
+ * segment.  In all cases, the source data is not consumed until a terminal
+     源数据直到终止操作开始的时候,源数据才开始被消费。
+ * operation begins.
+ *
+ * @param <E_IN>  type of input elements
+ * @param <E_OUT> type of output elements
+ * @param <S> type of the subclass implementing {@code BaseStream}
+ * @since 1.8
+ */
+abstract class AbstractPipeline<E_IN, E_OUT, S extends BaseStream<E_OUT, S>>
+        extends PipelineHelper<E_OUT> implements BaseStream<E_OUT, S> {}
+```
+24.1、ReferencePipeline和AbstractPipeline源码分析
+```
+1.ReferencePipeline表示流的源阶段与中间阶段
+2.AbstractPipeline.Head表示流的源阶段
+
+两者大部分属性的设定都是类似的,但是存在一些属性是不同的,比如说Head是没有previousStage的,
+而ReferencePipeline则是存在previousStage的等等。
+
+
+stream().map(i -> i*2).filter(i > 10)....
+将每一个元素拿出来,经历中间所有的操作 这个就是管道计算在一趟过程中就执行完了,
+这一趟操作会将所有的操作都放置到一起去完成
+1,2,3,4,5,6
+
+
+list.stream().map(itm -> item).forEach( System.out::println);
+这种方式会调用AbstractPipeline中的forEach方法
+list.stream().forEach( System.out::println);
+而这种方式会调用ReferencePipeline.Head中的forEach()
+```
+
+
+24.2、流调用机制和原理 如下例子
+```
+package com.learn.jdk.chapter36;
+
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * chapter36 stream源码分析
+ * @ClassName: StreamTest10
+ * @Description: Stream 源码分析 ,流调用机制和原理
+ * @Author: lin
+ * @Date: 2020/1/16 14:00
+ * History:
+ * @<version> 1.0
+ */
+public class StreamTest10 {
+    public static void main(String[] args) {
+        List<String> list = Arrays.asList( "hello", "world", "welcome");
+
+       System.out.println(list.getClass());
+        // 打印出来的class java.util.Arrays$ArrayList 这个是Arrays类中的一个内部类,
+        // 只是这个名字和java.util.ArrayList类的名字相同,但是这两者是不同的类
+
+        list.stream().forEach(System.out::println);
+    }
+}
+
+
+list.stream执行的Collection中的Stream方法,
+default Stream<E> stream() {
+        return StreamSupport.stream(spliterator(), false);
+    }
+而默认方法Stream中又调用spliterator()方法
+
+    default Spliterator<E> spliterator() {
+        return Spliterators.spliterator(this, 0);
+    }
+
+这个spliterator()方法的有很多实现spliterator()方法并且重写了这个方法,
+并且Arrays中的内部类ArrayList也实现了这个方法spliterator(),
+所以在调用的时候应该是调用的这个静态内部类重写的spliterator()方法。
+private static class ArrayList<E> extends AbstractList<E>{
+
+  @Override
+        public Spliterator<E> spliterator() {
+            return Spliterators.spliterator(a, Spliterator.ORDERED);
+        }
+}
+
+ public static <T> Spliterator<T> spliterator(Object[] array,
+                                                 int additionalCharacteristics) {
+        return new ArraySpliterator<>(Objects.requireNonNull(array),
+                                      additionalCharacteristics);
+    }
+
+
+而在上面我们使用的是Arrays类中ArrayList静态内部类。
+然后执行Spliterators类中的静态类 ArraySpliterator<T>的ArraySpliterator方法。
+ public ArraySpliterator(Object[] array, int additionalCharacteristics) {
+            this(array, 0, array.length, additionalCharacteristics);
+        }
+最后调用这个静态内部类中的forEachRemaining方法。
+        @SuppressWarnings("unchecked")
+        @Override
+        public void forEachRemaining(Consumer<? super T> action) {
+            Object[] a; int i, hi; // hoist accesses and checks from loop
+            if (action == null)
+                throw new NullPointerException();
+            if ((a = array).length >= (hi = fence) &&
+                (i = index) >= 0 && i < (index = hi)) {
+                 这个循环才是真正的去遍历流当中的每一个元素的执行语句
+                do { action.accept((T)a[i]); } while (++i < hi);
+            }
+        }
 
 
 
 
+public class StreamTest10 {
+    public static void main(String[] args) {
+        List<String> list = Arrays.asList( "hello", "world", "welcome");
+        list.stream().map(item -> item).forEach(System.out::println);
+    }
+}
 
+对于map的执行过程:首先进入Stream接口类中 map方法
+     /** 
+         将给定的函数应用到这个流中每一个元素之后所返回的结果
+       * Returns a stream consisting of the results of applying the given
+       * function to the elements of this stream.
+       *
+       * <p>This is an <a href="package-summary.html#StreamOps">intermediate
+       * operation</a>.
+       *
+       * @param <R> The element type of the new stream
+       * @param mapper a <a href="package-summary.html#NonInterference">non-interfering</a>,
+       *               <a href="package-summary.html#Statelessness">stateless</a>
+       *               function to apply to each element
+       * @return the new stream
+       */
+      <R> Stream<R> map(Function<? super T, ? extends R> mapper);
+执行代码在 ReferencePipeline类中 map具体实现
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public final <R> Stream<R> map(Function<? super P_OUT, ? extends R> mapper) {
+        Objects.requireNonNull(mapper);
+         //返回对象是无状态的操作,StatelessOp是一个抽象类显然不能new,
+         所以实现上返回的StatelessOp这个类的一个子类实例,这是匿名内部类的一个概念。
+         这里new 出来是继承了StatelessOp类的子类对象。会把opWrapSink这个方法实现出来
+        return new StatelessOp<P_OUT, R>(this, StreamShape.REFERENCE,
+                                     StreamOpFlag.NOT_SORTED | StreamOpFlag.NOT_DISTINCT) {
+            @Override
+            Sink<P_OUT> opWrapSink(int flags, Sink<R> sink) {
+                return new Sink.ChainedReference<P_OUT, R>(sink) {
+                    @Override
+                    public void accept(P_OUT u) {
+                        downstream.accept(mapper.apply(u));
+                    }
+                };
+            }
+        };
+    }
+
+ 对于StatelessOp类
+
+    /**
+       这个是一个中间无状态的流的一个基类
+     * Base class for a stateless intermediate stage of a Stream.
+     *
+     * @param <E_IN> type of elements in the upstream source
+     * @param <E_OUT> type of elements in produced by this stage
+     * @since 1.8
+     */
+    abstract static class StatelessOp<E_IN, E_OUT>
+            extends ReferencePipeline<E_IN, E_OUT> {
+    /**
+     * Construct a new Stream by appending a stateless intermediate
+     * operation to an existing stream.
+     *
+      这个upstream上游表示 head, 如果有filter的话,那么对于filter的上游就是map
+     * @param upstream The upstream pipeline stage
+      上游管道特性
+     * @param inputShape The stream shape for the upstream pipeline stage
+      新的操作标识
+     * @param opFlags Operation flags for the new stage
+     */ 
+       
+        StatelessOp(AbstractPipeline<?, E_IN, ?> upstream,
+                    StreamShape inputShape,
+                    int opFlags) {
+            super(upstream, opFlags);
+            //上游得到他的输出shape一定等于当前输入的shape
+            assert upstream.getOutputShape() == inputShape;
+        }
+
+注意:实际上流的串联就相当于一个双向链表
+
+   AbstractPipeline(AbstractPipeline<?, E_IN, ?> previousStage, int opFlags) {
+         前一个阶段已经被消费掉了,那么就抛出异常。对一个已经消费的流再去追加那么肯定是不可以的
+        if (previousStage.linkedOrConsumed)
+            throw new IllegalStateException(MSG_STREAM_LINKED);
+        追加完之后立刻将前一个阶段linkedOrConsumed 设置为true
+        previousStage.linkedOrConsumed = true;
+        将下一个阶段设置为this
+        previousStage.nextStage = this;
+
+        this.previousStage = previousStage;
+        this.sourceOrOpFlags = opFlags & StreamOpFlag.OP_MASK;
+        this.combinedFlags = StreamOpFlag.combineOpFlags(opFlags, previousStage.combinedFlags);
+        this.sourceStage = previousStage.sourceStage;
+        if (opIsStateful())
+            sourceStage.sourceAnyStateful = true;
+        深度等于之前的深度加1
+        this.depth = previousStage.depth + 1;
+    }
+
+
+
+===============================================================================================
+
+/**
+  sink是Consumer的扩展类用于在整个流管道的各个阶段去处理值
+ * An extension of {@link Consumer} used to conduct values through the stages of
+  提供一些额外的方法去管理这个大小的信息,控制的流程等
+ * a stream pipeline, with additional methods to manage size information,
+ 在首次调用sink的accept()方法之前,
+ * control flow, etc.  Before calling the {@code accept()} method on a
+ * {@code Sink} for the first time, you must first call the {@code begin()}
+ 你必须要调用begin()方法去通知它 数据要过来了(可选还可以通知这个数据量是多少),
+ * method to inform it that data is coming (optionally informing the sink how
+  在所有数据都被发送过来之后 你必须要调用end()方法。 
+ * much data is coming), and after all data has been sent, you must call the
+ * {@code end()} method.  After calling {@code end()}, you should not call
+  在调用完end()方法你就不应该再调用accept()方法，除非你再调用一次begin()方法，
+  也就是说这个sink是可以重用的
+ * {@code accept()} without again calling {@code begin()}.  {@code Sink} also
+ Sink还提供了一种机制 sink可以协作的发出信号 它不希望接收任何数据了 
+  通过cancellationRequested()方法来实现
+ * offers a mechanism by which the sink can cooperatively signal that it does
+ * not wish to receive any more data (the {@code cancellationRequested()}
+  一个流就可以轮询发送更多的数据到sink之前 是否取消了。
+ * method), which a source can poll before sending more data to the
+ * {@code Sink}.
+ *
+ * <p>A sink may be in one of two states: an initial state and an active state.
+  sink可以有两种状态，一种是初始状态另一种是激活状态。
+ * It starts out in the initial state; the {@code begin()} method transitions
+    首先它是从初始状态开始的，begin方法会将它转换成 激活状态
+ * it to the active state, and the {@code end()} method transitions it back into
+   而end()方法会将其转换会初始状态,那么这样调用end()方法就可以重用了。
+ * the initial state, where it can be re-used.  Data-accepting methods (such as
+   数据接收 比如accept()放只在激活状态下有效。
+ * {@code accept()} are only valid in the active state.
+ *
+ * @apiNote
+ * A stream pipeline consists of a source, zero or more intermediate stages
+                                                         比如说汇聚或者for-ecah
+ * (such as filtering or mapping), and a terminal stage, such as reduction or
+ * for-each.  For concreteness, consider the pipeline:
+ *
+ * <pre>{@code
+ *     int longestStringLengthStartingWithA
+ *         = strings.stream()
+ *                  .filter(s -> s.startsWith("A"))
+ *                  .mapToInt(String::length)
+ *                  .max();
+ * }</pre>
+ *
+ * <p>Here, we have three stages, filtering, mapping, and reducing.  The
+ * filtering stage consumes strings and emits a subset of those strings; the
+                                                      
+ * mapping stage consumes strings and emits ints; the reduction stage consumes
+ * those ints and computes the maximal value.
+ *
+  Sink实例是用于表示管道当中的每一个阶段
+ * <p>A {@code Sink} instance is used to represent each stage of this pipeline,
+ 无论这个阶段是接受的是对象，int,longs或者doubles等等
+ * whether the stage accepts objects, ints, longs, or doubles.  Sink has entry
+   Sink有一个入口点
+ * points for {@code accept(Object)}, {@code accept(int)}, etc, so that we do
+  我们不需要一个专门的接口针对原生的特化。
+ * not need a specialized interface for each primitive specialization.  (It
+ * might be called a "kitchen sink" for this omnivorous tendency.)  The entry
+ * point to the pipeline is the {@code Sink} for the filtering stage, which
+ * sends some elements "downstream" -- into the {@code Sink} for the mapping
+ * stage, which in turn sends integral values downstream into the {@code Sink}
+ * for the reduction stage. The {@code Sink} implementations associated with a
+ * given stage is expected to know the data type for the next stage, and call
+ * the correct {@code accept} method on its downstream {@code Sink}.  Similarly,
+ * each stage must implement the correct {@code accept} method corresponding to
+ * the data type it accepts.
+ *
+ * <p>The specialized subtypes such as {@link Sink.OfInt} override
+ * {@code accept(Object)} to call the appropriate primitive specialization of
+ * {@code accept}, implement the appropriate primitive specialization of
+ * {@code Consumer}, and re-abstract the appropriate primitive specialization of
+ * {@code accept}.
+ *
+ * <p>The chaining subtypes such as {@link ChainedInt} not only implement
+ * {@code Sink.OfInt}, but also maintain a {@code downstream} field which
+ * represents the downstream {@code Sink}, and implement the methods
+ * {@code begin()}, {@code end()}, and {@code cancellationRequested()} to
+ * delegate to the downstream {@code Sink}.  Most implementations of
+ * intermediate operations will use these chaining wrappers.  For example, the
+ * mapping stage in the above example would look like:
+ *
+ * <pre>{@code
+ *     IntSink is = new Sink.ChainedReference<U>(sink) {
+ *         public void accept(U u) {
+ *             downstream.accept(mapper.applyAsInt(u));
+ *         }
+ *     };
+ * }</pre>
+ *
+ * <p>Here, we implement {@code Sink.ChainedReference<U>}, meaning that we expect
+ * to receive elements of type {@code U} as input, and pass the downstream sink
+ * to the constructor.  Because the next stage expects to receive integers, we
+ * must call the {@code accept(int)} method when emitting values to the downstream.
+ * The {@code accept()} method applies the mapping function from {@code U} to
+ * {@code int} and passes the resulting value to the downstream {@code Sink}.
+ *
+ * @param <T> type of elements for value streams
+ * @since 1.8
+ */
+interface Sink<T> extends Consumer<T> {}
+}
+
+
+```
+
+24.3 lambda表达式和匿名内部类的区别
+```java
+package com.learn.jdk.chapter44;
+
+/**
+ * chapter44
+ * @ClassName: LambdaTest
+ * @Description:
+ * @Author: lin
+ * @Date: 2020/1/19 14:05
+ * History:
+ * @<version> 1.0
+ */
+public class LambdaTest {
+    /**
+     * 这个this表示 当前类对象的实例。 lambda表达式和匿名内部类 完全不是同一个事
+     *  匿名内部类是一个新的作用域，而lambda的作用域是外层作用域。
+      */
+    Runnable r1 = () -> System.out.println(this);
+
+    /**
+     * 这个 new Runnable(){} 表示实现里Runnable接口的一个实现类实例,
+     * 这个类实际上是没有名字的 也就是匿名类
+     */
+    Runnable r2 = new Runnable() {
+        @Override
+        public void run() {
+            // 这个this 表示匿名内部类 所对应的对象。
+            System.out.println(this);
+        }
+    };
+
+    public static void main(String[] args) {
+        LambdaTest lambdaTest = new LambdaTest();
+        Thread t1 = new Thread(lambdaTest.r1);
+        t1.start();
+
+        System.out.println("**************************");
+
+        Thread t2 = new Thread(lambdaTest.r2);
+        t2.start();
+
+        // 问题:两个this的输出是什么,输出是一样的吗？ 如果不一样那么分别是什么？
+        // 1、第一个r1打印的是 com.learn.jdk.chapter44.LambdaTest@5983b966
+        // 2、第二个r2输出的是 com.learn.jdk.chapter44.LambdaTest$1@2cacedc9
+        // 从第二个输出可以知道 LambdaTest$1其实是一个匿名内部类的特点, 这个匿名类本身没有名字所以是匿名类,
+        // 那么在java中匿名类 表示是就是用外层的public类(文件名字)后面跟上一个$符合,
+        // 然后按照顺序 如果第一个匿名类 就有$1来表示,如果在当前文件中出现第二个匿名类那么就是$2这样排下来
+    }
+
+}
+
+```
+24.4
+``` 
+ReferencePipeline中 map 方法返回 Stream<T> ,而 返回的是new StatelessOp,
+这个StatelessOp是在ReferencePipeline类中的一个静态类并且 继承了ReferencePipeline类，
+而ReferencePipeline类又实现了Stream，所以这里可以返回StatelessOp的一个对象。
+StatelessOp 本身是一个抽象类显然是不能new的，所以这里return new StatelessOp()是匿名类，
+实际上是继承了StatelessOp的一个具体子类的对象，这个子类是没有名字的因此是一个匿名类。
+  @Override
+    @SuppressWarnings("unchecked")
+    public final <R> Stream<R> map(Function<? super P_OUT, ? extends R> mapper) {
+        Objects.requireNonNull(mapper);
+           //this表示ReferencePipeline, ReferencePipelineb表示多个中间操作中的一个
+        return new StatelessOp<P_OUT, R>(this, StreamShape.REFERENCE,
+                                     StreamOpFlag.NOT_SORTED | StreamOpFlag.NOT_DISTINCT) {
+            @Override
+            // 操作包装 就是将操作合在一起。比如 stream-map-filter-forEach 
+            就是一个元素经历了这三个操作的所以阶段 map-filter-forEach，
+           这就是opWrapSink的作用
+            Sink<P_OUT> opWrapSink(int flags, Sink<R> sink) {
+                return new Sink.ChainedReference<P_OUT, R>(sink) {
+                    @Override
+                    public void accept(P_OUT u) {
+                        downstream.accept(mapper.apply(u));
+                    }
+                };
+            }
+        };
+    }
+
+第一个参数是AbstractPipeline，因为ReferencePipelineb是AbstractPipeline类的子类。
+第二个参数是流的类别。
+第三个是流的特性标志
+这里调用的是父类的构造方法super(upstream, opFlags);
+StatelessOp(AbstractPipeline<?, E_IN, ?> upstream,
+                    StreamShape inputShape,
+                    int opFlags) {
+            super(upstream, opFlags);
+            assert upstream.getOutputShape() == inputShape;
+        }
+
+
+
+
+    /**
+     将一个中间操作给追加到存在的管道上
+     * Constructor for appending an intermediate operation onto an existing
+     * pipeline.
+     *  上游元素 的源
+     * @param upstream the upstream element source.
+     */
+    ReferencePipeline(AbstractPipeline<?, P_IN, ?> upstream, int opFlags) {
+        super(upstream, opFlags);
+    }
+
+stream ------>map ----filter------forEach
+upStream              downStream
+
+
+如果父类中规定了一种执行顺序，然后每一个顺序当中每一个步骤该怎么做父类它是不管的，
+而是需要又子类去实现 如果遇到了这种情况 一定是遇到了模板方法模式。
+比如这里的Sink类中 begin(), accept(), end()方法
+
+```
+25、TerminalOp源码分析与终止操作层次
+```
+
+
+/**
+  在流管道的一个操作它会接收一个流作为输入并且生成一个结果或者拥有副作用的。
+  什么是副作用 就是调用一个方法，方法传递了一参数 最终在方法实现里面 修改了参数。
+ 比如传递了一个对象的引用 可能在这个方法执行代码里修改传进来的引用参数所指向的那个对象某些成员变量
+ 这就叫做副作用。
+ * An operation in a stream pipeline that takes a stream as input and produces
+ * a result or side-effect.  A {@code TerminalOp} has an input type and stream
+     一个终止操作有一个输入类型和流的状态，和结果类型。TerminalOp还用于一组操作标识
+ * shape, and a result type.  A {@code TerminalOp} also has a set of
+ 它描述了操作是如何处理流当中元素的 比如短路或者按照顺序的执行
+ * <em>operation flags</em> that describes how the operation processes elements
+ * of the stream (such as short-circuiting or respecting encounter order; see
+ * {@link StreamOpFlag}).
+ * 
+  TerminalOp必须要提供一种串行和并行操作的实现，根据给定的流源和特定的中间操作。
+ * <p>A {@code TerminalOp} must provide a sequential and parallel implementation
+ * of the operation relative to a given stream source and set of intermediate
+ * operations.
+ *
+ * @param <E_IN> the type of input elements
+ * @param <R>    the type of the result
+ * @since 1.8
+ */
+interface TerminalOp<E_IN, R> {
+
+  /** 执行一种并行操作的计算使用给定的PipelineHelper，它描述了上游的中间操作
+   * Performs a parallel evaluation of the operation using the specified
+   * {@code PipelineHelper}, which describes the upstream intermediate
+   * operations.
+   *  
+    默认的使用指定PipelineHelper来执行的串行的计算
+   * @implSpec The default performs a sequential evaluation of the operation
+   * using the specified {@code PipelineHelper}.
+   *
+   * @param helper the pipeline helper
+   * @param spliterator the source spliterator
+   * @return the result of the evaluation
+   */
+  //并行实现，会使用串行的方式来执行。
+  default <P_IN> R evaluateParallel(PipelineHelper<E_IN> helper,
+                                    Spliterator<P_IN> spliterator) {
+      if (Tripwire.ENABLED)
+          Tripwire.trip(getClass(), "{0} triggering TerminalOp.evaluateParallel serial default");
+      return evaluateSequential(helper, spliterator);
+  }
+
+}
+
+
+  // Terminal operations from Stream
+
+    @Override
+    public void forEach(Consumer<? super P_OUT> action) {
+        evaluate(ForEachOps.makeRef(action, false));
+    }
+
+ /**  ForEachOps 类中实现
+     * Constructs a {@code TerminalOp} that perform an action for every element
+     * of a stream.
+     *
+     * @param action the {@code Consumer} that receives all elements of a
+     *        stream
+     * @param ordered whether an ordered traversal is requested
+     * @param <T> the type of the stream elements
+     * @return the {@code TerminalOp} instance
+     */
+    public static <T> TerminalOp<T, Void> makeRef(Consumer<? super T> action,
+                                                  boolean ordered) {
+        Objects.requireNonNull(action);
+        return new ForEachOp.OfRef<>(action, ordered);
+    }
+
+----------------------- // AbstractPipeline 类实现------------------
+// Terminal evaluation methods
+    
+    /**
+     * Evaluate the pipeline with a terminal operation to produce a result.
+     *
+     * @param <R> the type of result
+     * @param terminalOp the terminal operation to be applied to the pipeline.
+     * @return the result
+     */
+    final <R> R evaluate(TerminalOp<E_OUT, R> terminalOp) {
+        assert getOutputShape() == terminalOp.inputShape();
+        if (linkedOrConsumed)
+            throw new IllegalStateException(MSG_STREAM_LINKED);
+        linkedOrConsumed = true;
+
+        return isParallel()
+               ? terminalOp.evaluateParallel(this, sourceSpliterator(terminalOp.getOpFlags()))
+               : terminalOp.evaluateSequential(this, sourceSpliterator(terminalOp.getOpFlags()));
+    }
+
+
+          // ForEachOps类中的实现
+        @Override
+        public <S> Void evaluateSequential(PipelineHelper<T> helper,
+                                           Spliterator<S> spliterator) {
+            return helper.wrapAndCopyInto(this, spliterator).get();
+        }
+
+
+    @Override
+    final <P_IN, S extends Sink<E_OUT>> S wrapAndCopyInto(S sink, Spliterator<P_IN> spliterator) {
+        copyInto(wrapSink(Objects.requireNonNull(sink)), spliterator);
+        return sink;
+    }
+
+
+
+ /**
+      这个包装会接收PipelineHelper的类型的输出元素，然后使用一个sink来对其进行包装
+     * Takes a {@code Sink} that accepts elements of the output type of the
+     * {@code PipelineHelper}, and wrap it with a {@code Sink} that accepts
+      并且实现所有由PipelineHelper描述的的中间操作，并将结果传递给所提供的sink上
+     * elements of the input type and implements all the intermediate operations
+     * described by this {@code PipelineHelper}, delivering the result into the
+     * provided {@code Sink}.
+     *
+     * @param sink the {@code Sink} to receive the results
+     * @return a {@code Sink} that implements the pipeline stages and sends
+     *         results to the provided {@code Sink}
+     */
+    // 这个方法完成了对多个流的串联
+    abstract<P_IN> Sink<P_IN> wrapSink(Sink<P_OUT> sink);
+
+ //具体实现
+ @Override
+    @SuppressWarnings("unchecked")
+    final <P_IN> Sink<P_IN> wrapSink(Sink<E_OUT> sink) {
+        Objects.requireNonNull(sink);
+
+        for ( @SuppressWarnings("rawtypes") AbstractPipeline p=AbstractPipeline.this; p.depth > 0; p=p.previousStage) {
+            sink = p.opWrapSink(p.previousStage.combinedFlags, sink);
+        }
+        return (Sink<P_IN>) sink;
+    }
+
+
+
+    /** 将Spliterator中获取到的元素推送到所提供的sink当中，
+     * Pushes elements obtained from the {@code Spliterator} into the provided
+       如果流管道已经知道有短路阶段，那么会进行短路的判断
+     * {@code Sink}.  If the stream pipeline is known to have short-circuiting
+     * stages in it (see {@link StreamOpFlag#SHORT_CIRCUIT}), the
+     * {@link Sink#cancellationRequested()} is checked after each
+     * element, stopping if cancellation is requested.
+     *
+     * @implSpec
+       这个方法遵循sink的协议 先去调用 begin 在推元素之前。 然后调用Sink.accept,最后去调用
+      Sink.end 当所有元素被推送后
+     * This method conforms to the {@code Sink} protocol of calling
+     * {@code Sink.begin} before pushing elements, via {@code Sink.accept}, and
+     * calling {@code Sink.end} after all elements have been pushed.
+     *
+     * @param wrappedSink the destination {@code Sink}
+     * @param spliterator the source {@code Spliterator}
+     */
+      将操作连接起来后还没处理完，要将元素逐个的推到所提供好的已经包装好的Sink对象当中。
+    abstract<P_IN> void copyInto(Sink<P_IN> wrappedSink, Spliterator<P_IN> spliterator);
+```
+
+25.1、PipelineHelper类分析
+```
+ 
+/**
+  Helper类 用于执行StreamOps流管道，
+在一处捕获有关流管道的所以信息（输出形状，中间操作，流标志，并行性等）。
+ * Helper class for executing <a href="package-summary.html#StreamOps">
+ * stream pipelines</a>, capturing all of the information about a stream
+ * pipeline (output shape, intermediate operations, stream flags, parallelism,
+ * etc) in one place.
+ *
+ * <p>
+PipelineHelper描述了一个流管道最初的分块，包含了它的源、中间操作和额外的附加的 合并信息
+ * A {@code PipelineHelper} describes the initial segment of a stream pipeline,
+ * including its source, intermediate operations, and may additionally
+ * incorporate information about the terminal (or stateful) operation which
+
+ * follows the last intermediate operation described by this
+ * {@code PipelineHelper}. The {@code PipelineHelper} is passed to the
+ * {@link TerminalOp#evaluateParallel(PipelineHelper, java.util.Spliterator)},
+ * {@link TerminalOp#evaluateSequential(PipelineHelper, java.util.Spliterator)},
+ * and {@link AbstractPipeline#opEvaluateParallel(PipelineHelper, java.util.Spliterator,
+ * java.util.function.IntFunction)}, methods, which can use the
+ * {@code PipelineHelper} to access information about the pipeline such as
+ * head shape, stream flags, and size, and use the helper methods
+ * such as {@link #wrapAndCopyInto(Sink, Spliterator)},
+ * {@link #copyInto(Sink, Spliterator)}, and {@link #wrapSink(Sink)} to execute
+ * pipeline operations.
+ *
+ * @param <P_OUT> type of output elements from the pipeline
+ * @since 1.8
+ */
+abstract class PipelineHelper<P_OUT> {
+
+  /**
+       * Applies the pipeline stages described by this {@code PipelineHelper} to
+       * the provided {@code Spliterator} and send the results to the provided
+       * {@code Sink}.
+       *
+       * @implSpec
+       * The implementation behaves as if:
+       * <pre>{@code
+       *     intoWrapped(wrapSink(sink), spliterator);
+       * }</pre>
+       *
+       * @param sink the {@code Sink} to receive the results
+       * @param spliterator the spliterator describing the source input to process
+       */
+      abstract<P_IN, S extends Sink<P_OUT>> S wrapAndCopyInto(S sink, Spliterator<P_IN> spliterator);
+
+
+  
+
+
+   
+}
+```
+
+
+26、Stream延迟求值底层分析与Sink链接机制
+```
+1、
+
+```
