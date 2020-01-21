@@ -4253,13 +4253,13 @@ public class LambdaTest {
 }
 
 ```
-24.4
+24.4 ReferencePipeline类
 ``` 
-ReferencePipeline中 map 方法返回 Stream<T> ,而 返回的是new StatelessOp,
-这个StatelessOp是在ReferencePipeline类中的一个静态类并且 继承了ReferencePipeline类，
-而ReferencePipeline类又实现了Stream，所以这里可以返回StatelessOp的一个对象。
-StatelessOp 本身是一个抽象类显然是不能new的，所以这里return new StatelessOp()是匿名类，
-实际上是继承了StatelessOp的一个具体子类的对象，这个子类是没有名字的因此是一个匿名类。
+    ReferencePipeline中 map 方法返回 Stream<T> ,而 返回的是new StatelessOp,
+    这个StatelessOp是在ReferencePipeline类中的一个静态类并且 继承了ReferencePipeline类，
+    而ReferencePipeline类又实现了Stream，所以这里可以返回StatelessOp的一个对象。
+    StatelessOp 本身是一个抽象类显然是不能new的，所以这里return new StatelessOp()是匿名类，
+    实际上是继承了StatelessOp的一个具体子类的对象，这个子类是没有名字的因此是一个匿名类。
   @Override
     @SuppressWarnings("unchecked")
     public final <R> Stream<R> map(Function<? super P_OUT, ? extends R> mapper) {
@@ -4269,8 +4269,8 @@ StatelessOp 本身是一个抽象类显然是不能new的，所以这里return n
                                      StreamOpFlag.NOT_SORTED | StreamOpFlag.NOT_DISTINCT) {
             @Override
             // 操作包装 就是将操作合在一起。比如 stream-map-filter-forEach 
-            就是一个元素经历了这三个操作的所以阶段 map-filter-forEach，
-           这就是opWrapSink的作用
+            //就是一个元素经历了这三个操作的所以阶段 map-filter-forEach，
+            // 这就是opWrapSink的作用
             Sink<P_OUT> opWrapSink(int flags, Sink<R> sink) {
                 return new Sink.ChainedReference<P_OUT, R>(sink) {
                     @Override
@@ -4294,8 +4294,6 @@ StatelessOp(AbstractPipeline<?, E_IN, ?> upstream,
         }
 
 
-
-
     /**
      将一个中间操作给追加到存在的管道上
      * Constructor for appending an intermediate operation onto an existing
@@ -4315,10 +4313,19 @@ upStream              downStream
 而是需要又子类去实现 如果遇到了这种情况 一定是遇到了模板方法模式。
 比如这里的Sink类中 begin(), accept(), end()方法
 
+
+
+  // Terminal operations from Stream
+
+    @Override
+    public void forEach(Consumer<? super P_OUT> action) {
+        evaluate(ForEachOps.makeRef(action, false));
+    }
+
+
 ```
 25、TerminalOp源码分析与终止操作层次
 ```
-
 
 /**
   在流管道的一个操作它会接收一个流作为输入并且生成一个结果或者拥有副作用的。
@@ -4369,14 +4376,31 @@ interface TerminalOp<E_IN, R> {
 }
 
 
-  // Terminal operations from Stream
+    
+```
 
-    @Override
-    public void forEach(Consumer<? super P_OUT> action) {
-        evaluate(ForEachOps.makeRef(action, false));
-    }
-
- /**  ForEachOps 类中实现
+25.1、ForEachOps 类
+```
+/**
+ * Factory for creating instances of {@code TerminalOp} that perform an
+ * action for every element of a stream.  Supported variants include unordered
+ * traversal (elements are provided to the {@code Consumer} as soon as they are
+ * available), and ordered traversal (elements are provided to the
+ * {@code Consumer} in encounter order.)
+ *
+ * <p>Elements are provided to the {@code Consumer} on whatever thread and
+ * whatever order they become available.  For ordered traversals, it is
+ * guaranteed that processing an element <em>happens-before</em> processing
+ * subsequent elements in the encounter order.
+ *
+ * <p>Exceptions occurring as a result of sending an element to the
+ * {@code Consumer} will be relayed to the caller and traversal will be
+ * prematurely terminated.
+ *
+ * @since 1.8
+ */
+final class ForEachOps {
+    /**  
      * Constructs a {@code TerminalOp} that perform an action for every element
      * of a stream.
      *
@@ -4392,95 +4416,20 @@ interface TerminalOp<E_IN, R> {
         return new ForEachOp.OfRef<>(action, ordered);
     }
 
------------------------ // AbstractPipeline 类实现------------------
-// Terminal evaluation methods
-    
-    /**
-     * Evaluate the pipeline with a terminal operation to produce a result.
-     *
-     * @param <R> the type of result
-     * @param terminalOp the terminal operation to be applied to the pipeline.
-     * @return the result
-     */
-    final <R> R evaluate(TerminalOp<E_OUT, R> terminalOp) {
-        assert getOutputShape() == terminalOp.inputShape();
-        if (linkedOrConsumed)
-            throw new IllegalStateException(MSG_STREAM_LINKED);
-        linkedOrConsumed = true;
 
-        return isParallel()
-               ? terminalOp.evaluateParallel(this, sourceSpliterator(terminalOp.getOpFlags()))
-               : terminalOp.evaluateSequential(this, sourceSpliterator(terminalOp.getOpFlags()));
-    }
+   static abstract class ForEachOp<T>
+            implements TerminalOp<T, Void>, TerminalSink<T, Void> {
 
+           @Override
+           public <S> Void evaluateSequential(PipelineHelper<T> helper,
+                                              Spliterator<S> spliterator) {
+               return helper.wrapAndCopyInto(this, spliterator).get();
+           }
+  }
 
-          // ForEachOps类中的实现
-        @Override
-        public <S> Void evaluateSequential(PipelineHelper<T> helper,
-                                           Spliterator<S> spliterator) {
-            return helper.wrapAndCopyInto(this, spliterator).get();
-        }
-
-
-    @Override
-    final <P_IN, S extends Sink<E_OUT>> S wrapAndCopyInto(S sink, Spliterator<P_IN> spliterator) {
-        copyInto(wrapSink(Objects.requireNonNull(sink)), spliterator);
-        return sink;
-    }
-
-
-
- /**
-      这个包装会接收PipelineHelper的类型的输出元素，然后使用一个sink来对其进行包装
-     * Takes a {@code Sink} that accepts elements of the output type of the
-     * {@code PipelineHelper}, and wrap it with a {@code Sink} that accepts
-      并且实现所有由PipelineHelper描述的的中间操作，并将结果传递给所提供的sink上
-     * elements of the input type and implements all the intermediate operations
-     * described by this {@code PipelineHelper}, delivering the result into the
-     * provided {@code Sink}.
-     *
-     * @param sink the {@code Sink} to receive the results
-     * @return a {@code Sink} that implements the pipeline stages and sends
-     *         results to the provided {@code Sink}
-     */
-    // 这个方法完成了对多个流的串联
-    abstract<P_IN> Sink<P_IN> wrapSink(Sink<P_OUT> sink);
-
- //具体实现
- @Override
-    @SuppressWarnings("unchecked")
-    final <P_IN> Sink<P_IN> wrapSink(Sink<E_OUT> sink) {
-        Objects.requireNonNull(sink);
-
-        for ( @SuppressWarnings("rawtypes") AbstractPipeline p=AbstractPipeline.this; p.depth > 0; p=p.previousStage) {
-            sink = p.opWrapSink(p.previousStage.combinedFlags, sink);
-        }
-        return (Sink<P_IN>) sink;
-    }
-
-
-
-    /** 将Spliterator中获取到的元素推送到所提供的sink当中，
-     * Pushes elements obtained from the {@code Spliterator} into the provided
-       如果流管道已经知道有短路阶段，那么会进行短路的判断
-     * {@code Sink}.  If the stream pipeline is known to have short-circuiting
-     * stages in it (see {@link StreamOpFlag#SHORT_CIRCUIT}), the
-     * {@link Sink#cancellationRequested()} is checked after each
-     * element, stopping if cancellation is requested.
-     *
-     * @implSpec
-       这个方法遵循sink的协议 先去调用 begin 在推元素之前。 然后调用Sink.accept,最后去调用
-      Sink.end 当所有元素被推送后
-     * This method conforms to the {@code Sink} protocol of calling
-     * {@code Sink.begin} before pushing elements, via {@code Sink.accept}, and
-     * calling {@code Sink.end} after all elements have been pushed.
-     *
-     * @param wrappedSink the destination {@code Sink}
-     * @param spliterator the source {@code Spliterator}
-     */
-      将操作连接起来后还没处理完，要将元素逐个的推到所提供好的已经包装好的Sink对象当中。
-    abstract<P_IN> void copyInto(Sink<P_IN> wrappedSink, Spliterator<P_IN> spliterator);
+}
 ```
+
 
 25.1、PipelineHelper类分析
 ```
@@ -4516,7 +4465,8 @@ PipelineHelper描述了一个流管道最初的分块，包含了它的源、中
  */
 abstract class PipelineHelper<P_OUT> {
 
-  /**
+  /**  应用由PipelineHelper所描述的管道阶段，把这个管道阶段应用给Spliterator，
+        然后将结果发送给所提供的sink对象
        * Applies the pipeline stages described by this {@code PipelineHelper} to
        * the provided {@code Spliterator} and send the results to the provided
        * {@code Sink}.
@@ -4533,13 +4483,161 @@ abstract class PipelineHelper<P_OUT> {
       abstract<P_IN, S extends Sink<P_OUT>> S wrapAndCopyInto(S sink, Spliterator<P_IN> spliterator);
 
 
-  
-
-
+ /**
+      这个包装会接收PipelineHelper的类型的输出元素，然后使用一个sink来对其进行包装
+     * Takes a {@code Sink} that accepts elements of the output type of the
+     * {@code PipelineHelper}, and wrap it with a {@code Sink} that accepts
+      并且实现所有由PipelineHelper描述的的中间操作，并将结果传递给所提供的sink上
+     * elements of the input type and implements all the intermediate operations
+     * described by this {@code PipelineHelper}, delivering the result into the
+     * provided {@code Sink}.
+     *
+     * @param sink the {@code Sink} to receive the results
+     * @return a {@code Sink} that implements the pipeline stages and sends
+     *         results to the provided {@code Sink}
+     */
+    // 这个方法本质上完成了对多个流的串联
+    abstract<P_IN> Sink<P_IN> wrapSink(Sink<P_OUT> sink);
    
+
+    /** 将Spliterator中获取到的元素推送到所提供的sink当中，
+     * Pushes elements obtained from the {@code Spliterator} into the provided
+       如果流管道已经知道有短路阶段，那么会进行短路的判断
+     * {@code Sink}.  If the stream pipeline is known to have short-circuiting
+     * stages in it (see {@link StreamOpFlag#SHORT_CIRCUIT}), the
+     * {@link Sink#cancellationRequested()} is checked after each
+     * element, stopping if cancellation is requested.
+     *
+     * @implSpec
+       这个方法遵循sink的协议 先去调用 begin 在推元素之前。 然后调用Sink.accept,最后去调用
+      Sink.end 当所有元素被推送后
+     * This method conforms to the {@code Sink} protocol of calling
+     * {@code Sink.begin} before pushing elements, via {@code Sink.accept}, and
+     * calling {@code Sink.end} after all elements have been pushed.
+     *
+     * @param wrappedSink the destination {@code Sink}
+     * @param spliterator the source {@code Spliterator}
+     */
+      将操作连接起来后还没处理完，要将元素逐个的推到所提供好的已经包装好的Sink对象当中。
+    abstract<P_IN> void copyInto(Sink<P_IN> wrappedSink, Spliterator<P_IN> spliterator);
 }
 ```
+25.3 AbstractPipeline 类
+```
 
+/**
+ * Abstract base class for "pipeline" classes, which are the core
+ * implementations of the Stream interface and its primitive specializations.
+ * Manages construction and evaluation of stream pipelines.
+ *
+ * <p>An {@code AbstractPipeline} represents an initial portion of a stream
+ * pipeline, encapsulating a stream source and zero or more intermediate
+ * operations.  The individual {@code AbstractPipeline} objects are often
+ * referred to as <em>stages</em>, where each stage describes either the stream
+ * source or an intermediate operation.
+ *
+ * <p>A concrete intermediate stage is generally built from an
+ * {@code AbstractPipeline}, a shape-specific pipeline class which extends it
+ * (e.g., {@code IntPipeline}) which is also abstract, and an operation-specific
+ * concrete class which extends that.  {@code AbstractPipeline} contains most of
+ * the mechanics of evaluating the pipeline, and implements methods that will be
+ * used by the operation; the shape-specific classes add helper methods for
+ * dealing with collection of results into the appropriate shape-specific
+ * containers.
+ *
+ * <p>After chaining a new intermediate operation, or executing a terminal
+ * operation, the stream is considered to be consumed, and no more intermediate
+ * or terminal operations are permitted on this stream instance.
+ *
+ * @implNote
+ * <p>For sequential streams, and parallel streams without
+ * <a href="package-summary.html#StreamOps">stateful intermediate
+ * operations</a>, parallel streams, pipeline evaluation is done in a single
+ * pass that "jams" all the operations together.  For parallel streams with
+ * stateful operations, execution is divided into segments, where each
+ * stateful operations marks the end of a segment, and each segment is
+ * evaluated separately and the result used as the input to the next
+ * segment.  In all cases, the source data is not consumed until a terminal
+ * operation begins.
+ *
+ * @param <E_IN>  type of input elements
+ * @param <E_OUT> type of output elements
+ * @param <S> type of the subclass implementing {@code BaseStream}
+ * @since 1.8
+ */
+abstract class AbstractPipeline<E_IN, E_OUT, S extends BaseStream<E_OUT, S>>
+        extends PipelineHelper<E_OUT> implements BaseStream<E_OUT, S> {
+// Terminal evaluation methods
+    
+    /**
+     * Evaluate the pipeline with a terminal operation to produce a result.
+     *
+     * @param <R> the type of result
+     * @param terminalOp the terminal operation to be applied to the pipeline.
+     * @return the result
+     */
+    final <R> R evaluate(TerminalOp<E_OUT, R> terminalOp) {
+        assert getOutputShape() == terminalOp.inputShape();
+        if (linkedOrConsumed)
+            throw new IllegalStateException(MSG_STREAM_LINKED);
+        linkedOrConsumed = true;
+
+        return isParallel()
+               ? terminalOp.evaluateParallel(this, sourceSpliterator(terminalOp.getOpFlags()))
+               : terminalOp.evaluateSequential(this, sourceSpliterator(terminalOp.getOpFlags()));
+    }
+
+          // ForEachOps类中的实现
+        @Override
+        public <S> Void evaluateSequential(PipelineHelper<T> helper,
+                                           Spliterator<S> spliterator) {
+            return helper.wrapAndCopyInto(this, spliterator).get();
+        }
+
+     //实现
+    @Override
+    final <P_IN, S extends Sink<E_OUT>> S wrapAndCopyInto(S sink, Spliterator<P_IN> spliterator) {
+        copyInto(wrapSink(Objects.requireNonNull(sink)), spliterator);
+        return sink;
+    }
+
+
+   //具体实现
+    @Override
+    @SuppressWarnings("unchecked")
+    final <P_IN> Sink<P_IN> wrapSink(Sink<E_OUT> sink) {
+        Objects.requireNonNull(sink);
+
+        for ( @SuppressWarnings("rawtypes") AbstractPipeline p=AbstractPipeline.this; p.depth > 0; p=p.previousStage) {
+             //这里opWrapSink的实现在ReferencePipeline类中map方法可以找到其实现。
+             ReferencePipeline类中map方法对opWrapSink方法的具体实现方法就是用来返回一个Sink.ChainedReference
+            sink = p.opWrapSink(p.previousStage.combinedFlags, sink);
+        }
+        return (Sink<P_IN>) sink;
+    }
+
+    @Override
+    final <P_IN> void copyInto(Sink<P_IN> wrappedSink, Spliterator<P_IN> spliterator) {
+       Objects.requireNonNull(wrappedSink);
+
+       if (!StreamOpFlag.SHORT_CIRCUIT.isKnown(getStreamAndOpFlags())) {
+           //模板方法模式的一个标准实现
+           
+           //获取到一个精确的大小
+           wrappedSink.begin(spliterator.getExactSizeIfKnown());
+            //对于一个流来说 它有n个中间操作 和一个终止操作，最终这个操作就是通过这个方法来完成的
+           // 这个方法把中间多个操作封装成wrappedSink对象，
+           //每一个元素就经历这个wrappedSink所对应的n个中间操作和一个终止操作来完成整个的操作。
+           spliterator.forEachRemaining(wrappedSink);
+           wrappedSink.end();
+       }
+       else {
+           copyIntoWithCancel(wrappedSink, spliterator);
+       }
+    }
+
+}
+```
 
 26、Stream延迟求值底层分析与Sink链接机制
 ```
