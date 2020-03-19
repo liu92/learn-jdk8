@@ -23,9 +23,9 @@ public class StreamDemo14 {
         List<StudentTest> list = Arrays.asList(test1, test2, test3, test4);
 
         // 根据名称分组
-//        Map<String, List<StudentTest>> map = list.stream().
-//                collect(Collectors.groupingBy(StudentTest::getName));
-//        System.out.println(map);
+        Map<String, List<StudentTest>> map = list.stream().
+                collect(Collectors.groupingBy(StudentTest::getName));
+        System.out.println(map);
         //根据分数分组
 //        Map<Integer, List<StudentTest>> collect = list.stream().
 //                collect(Collectors.groupingBy(StudentTest::getScore));

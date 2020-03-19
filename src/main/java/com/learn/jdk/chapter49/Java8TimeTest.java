@@ -1,7 +1,10 @@
 package com.learn.jdk.chapter49;
 
+import java.text.DateFormat;
 import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalAdjusters;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -17,7 +20,21 @@ import java.util.TreeSet;
 public class Java8TimeTest {
     public static void main(String[] args) {
         LocalDate localDate = LocalDate.now();
-        System.out.println(localDate);
+
+        LocalDate todayTime = LocalDate.now().with(TemporalAdjusters.firstDayOfMonth());
+        System.out.println("当前月份的第一天 todayTime: "+todayTime);
+
+        System.out.println("nowDate: " + localDate);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        String format = localDate.format(formatter);
+        System.out.println("format: "+ format);
+
+        LocalDate beforeDate = localDate.plusMonths(-1);
+        System.out.println("beforeDate:" + beforeDate);
+
+        LocalDate afterDate = localDate.plusMonths(1);
+        System.out.println("afterDate:" + afterDate);
+
         // 注意: 这里localDate是借鉴了joda-time来的，并且月份进行改良，现在是从1开始，而不是从0开始了
         System.out.println(localDate.getYear() + ", " + localDate.getMonthValue() +
                 ", " + localDate.getDayOfMonth());
@@ -25,7 +42,7 @@ public class Java8TimeTest {
         System.out.println("-------------");
 
         LocalDate localDate1 = LocalDate.of(2019, 12,19);
-        System.out.println(localDate1);
+        System.out.println("localDate1: "+  localDate1);
 
         System.out.println("---------------");
 
