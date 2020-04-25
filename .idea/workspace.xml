@@ -5,20 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8fffac38-6a90-4dbe-81db-23d0d0aedf3b" name="Default Changelist" comment="update: 提交文件">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/5.2.1/executionHistory/executionHistory.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/5.2.1/executionHistory/executionHistory.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/5.2.1/executionHistory/executionHistory.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/5.2.1/executionHistory/executionHistory.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/5.2.1/fileHashes/fileHashes.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/5.2.1/fileHashes/fileHashes.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/5.2.1/fileHashes/fileHashes.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/5.2.1/fileHashes/fileHashes.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/5.2.1/javaCompile/classAnalysis.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/5.2.1/javaCompile/classAnalysis.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/5.2.1/javaCompile/javaCompile.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/5.2.1/javaCompile/javaCompile.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter13/MethodReferenceDemo2.class" beforeDir="false" afterPath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter13/MethodReferenceDemo2.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter21/StreamDemo14.class" beforeDir="false" afterPath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter21/StreamDemo14.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter5/Demo5.class" beforeDir="false" afterPath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter5/Demo5.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/extension/Test.class" beforeDir="false" afterPath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/extension/Test.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/learn/jdk/extension/Test.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/learn/jdk/extension/Test.java" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -431,7 +418,7 @@
       <workItem from="1587304343169" duration="3928000" />
       <workItem from="1587390257881" duration="3801000" />
       <workItem from="1587475957483" duration="1522000" />
-      <workItem from="1587816386761" duration="2099000" />
+      <workItem from="1587816386761" duration="2313000" />
     </task>
     <task id="LOCAL-00001" summary="update">
       <created>1577202239408</created>
@@ -692,7 +679,14 @@
       <option name="project" value="LOCAL" />
       <updated>1587821545110</updated>
     </task>
-    <option name="localTasksCounter" value="38" />
+    <task id="LOCAL-00038" summary="update: 提交文件">
+      <created>1587821904272</created>
+      <option name="number" value="00038" />
+      <option name="presentableId" value="LOCAL-00038" />
+      <option name="project" value="LOCAL" />
+      <updated>1587821904272</updated>
+    </task>
+    <option name="localTasksCounter" value="39" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
