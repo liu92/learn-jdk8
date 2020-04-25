@@ -5,24 +5,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8fffac38-6a90-4dbe-81db-23d0d0aedf3b" name="Default Changelist" comment="update: 提交忽略文件">
-      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/codeStyles/codeStyleConfig.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/dataSources.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/5.2.1/executionHistory/executionHistory.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/5.2.1/executionHistory/executionHistory.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/5.2.1/executionHistory/executionHistory.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/5.2.1/executionHistory/executionHistory.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/5.2.1/fileHashes/fileHashes.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/5.2.1/fileHashes/fileHashes.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/5.2.1/fileHashes/fileHashes.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/5.2.1/fileHashes/fileHashes.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/5.2.1/javaCompile/classAnalysis.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/5.2.1/javaCompile/classAnalysis.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/5.2.1/javaCompile/javaCompile.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/5.2.1/javaCompile/javaCompile.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/5.2.1/javaCompile/taskHistory.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/5.2.1/javaCompile/taskHistory.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/compiler.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/compiler.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/gradle.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/gradle.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter21/StreamDemo14.class" beforeDir="false" afterPath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter21/StreamDemo14.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter49/Java8TimeTest$1.class" beforeDir="false" afterPath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter49/Java8TimeTest$1.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter49/Java8TimeTest.class" beforeDir="false" afterPath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter49/Java8TimeTest.class" afterDir="false" />
@@ -445,7 +427,7 @@
       <workItem from="1587304343169" duration="3928000" />
       <workItem from="1587390257881" duration="3801000" />
       <workItem from="1587475957483" duration="1522000" />
-      <workItem from="1587816386761" duration="1498000" />
+      <workItem from="1587816386761" duration="1749000" />
     </task>
     <task id="LOCAL-00001" summary="update">
       <created>1577202239408</created>
@@ -685,7 +667,21 @@
       <option name="project" value="LOCAL" />
       <updated>1587820981282</updated>
     </task>
-    <option name="localTasksCounter" value="35" />
+    <task id="LOCAL-00035" summary="update: 提交忽略文件">
+      <created>1587821286994</created>
+      <option name="number" value="00035" />
+      <option name="presentableId" value="LOCAL-00035" />
+      <option name="project" value="LOCAL" />
+      <updated>1587821286994</updated>
+    </task>
+    <task id="LOCAL-00036" summary="update: 提交文件">
+      <created>1587821508884</created>
+      <option name="number" value="00036" />
+      <option name="presentableId" value="LOCAL-00036" />
+      <option name="project" value="LOCAL" />
+      <updated>1587821508884</updated>
+    </task>
+    <option name="localTasksCounter" value="37" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -752,7 +748,9 @@
     <MESSAGE value="update: 相关阻塞队列学习" />
     <MESSAGE value="update: LockFree 测试但是这个还有问题" />
     <MESSAGE value="update: 添加忽略提交文件" />
-    <option name="LAST_COMMIT_MESSAGE" value="update: 添加忽略提交文件" />
+    <MESSAGE value="update: 提交忽略文件" />
+    <MESSAGE value="update: 提交文件" />
+    <option name="LAST_COMMIT_MESSAGE" value="update: 提交文件" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
