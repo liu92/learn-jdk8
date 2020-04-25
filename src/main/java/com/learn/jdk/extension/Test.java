@@ -41,8 +41,9 @@ public class Test {
 
               System.out.println("大于。。。。。。。。。。。。。。" + Integer.valueOf(tp));
           }
-          String rate = ".1";
-         String ratioString=keepRandomPoint(1/Double.valueOf(rate),9);
+        String rate = ".1";
+
+        String ratioString=keepRandomPoint(1/Double.valueOf(rate),9);
         System.out.println("ratioString========="+ ratioString);
         double v = new BigDecimal(ratioString).doubleValue();
         System.out.println("v=============="+ v);

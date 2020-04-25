@@ -4,11 +4,21 @@
     <option name="GROUP_BY_SEVERITY" value="true" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8fffac38-6a90-4dbe-81db-23d0d0aedf3b" name="Default Changelist" comment="update: 提交忽略文件">
+    <list default="true" id="8fffac38-6a90-4dbe-81db-23d0d0aedf3b" name="Default Changelist" comment="update: 提交文件">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/5.2.1/executionHistory/executionHistory.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/5.2.1/executionHistory/executionHistory.bin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/5.2.1/executionHistory/executionHistory.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/5.2.1/executionHistory/executionHistory.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/5.2.1/fileHashes/fileHashes.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/5.2.1/fileHashes/fileHashes.bin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/5.2.1/fileHashes/fileHashes.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/5.2.1/fileHashes/fileHashes.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/5.2.1/javaCompile/classAnalysis.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/5.2.1/javaCompile/classAnalysis.bin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/5.2.1/javaCompile/javaCompile.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/5.2.1/javaCompile/javaCompile.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter13/MethodReferenceDemo2.class" beforeDir="false" afterPath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter13/MethodReferenceDemo2.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter21/StreamDemo14.class" beforeDir="false" afterPath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter21/StreamDemo14.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter49/Java8TimeTest$1.class" beforeDir="false" afterPath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter49/Java8TimeTest$1.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter49/Java8TimeTest.class" beforeDir="false" afterPath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter49/Java8TimeTest.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter5/Demo5.class" beforeDir="false" afterPath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/chapter5/Demo5.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/extension/Test.class" beforeDir="false" afterPath="$PROJECT_DIR$/build/classes/java/main/com/learn/jdk/extension/Test.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/learn/jdk/extension/Test.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/learn/jdk/extension/Test.java" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -206,23 +216,9 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Application.LockFreeQueue">
+  <component name="RunManager" selected="Application.Test (1)">
     <configuration default="true" type="Applet">
       <option name="POLICY_FILE" value="$APPLICATION_HOME_DIR$/bin/appletviewer.policy" />
-      <method v="2">
-        <option name="Make" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="ForkJoinRecursiveAction" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
-      <option name="MAIN_CLASS_NAME" value="com.learn.concurrenty.juc.untils.forkjoin.ForkJoinRecursiveAction" />
-      <module name="com.learn.concurrenty.learn-java-concurrenty.main" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <extension name="coverage">
-        <pattern>
-          <option name="PATTERN" value="com.learn.concurrenty.juc.untils.forkjoin.*" />
-          <option name="ENABLED" value="true" />
-        </pattern>
-      </extension>
       <method v="2">
         <option name="Make" enabled="true" />
       </method>
@@ -241,8 +237,8 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
-    <configuration name="PhaserExample2" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
-      <option name="MAIN_CLASS_NAME" value="com.learn.concurrenty.juc.untils.phaser.PhaserExample2" />
+    <configuration name="PhaserExample3" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="com.learn.concurrenty.juc.untils.phaser.PhaserExample3" />
       <module name="com.learn.concurrenty.learn-java-concurrenty.main" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
       <extension name="coverage">
@@ -255,13 +251,21 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
-    <configuration name="PhaserExample3" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
-      <option name="MAIN_CLASS_NAME" value="com.learn.concurrenty.juc.untils.phaser.PhaserExample3" />
+    <configuration name="Test (1)" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="Test" />
       <module name="com.learn.concurrenty.learn-java-concurrenty.main" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Test" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="com.learn.jdk.extension.Test" />
+      <module name="learn-jdk8.main" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
       <extension name="coverage">
         <pattern>
-          <option name="PATTERN" value="com.learn.concurrenty.juc.untils.phaser.*" />
+          <option name="PATTERN" value="com.learn.jdk.extension.*" />
           <option name="ENABLED" value="true" />
         </pattern>
       </extension>
@@ -329,11 +333,11 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Application.Test (1)" />
+        <item itemvalue="Application.Test" />
         <item itemvalue="Application.LockFreeQueue" />
         <item itemvalue="Gradle.DelayQueueExampleTest.testAdd" />
         <item itemvalue="Application.PhaserExample3" />
-        <item itemvalue="Application.PhaserExample2" />
-        <item itemvalue="Application.ForkJoinRecursiveAction" />
       </list>
     </recent_temporary>
   </component>
@@ -427,7 +431,7 @@
       <workItem from="1587304343169" duration="3928000" />
       <workItem from="1587390257881" duration="3801000" />
       <workItem from="1587475957483" duration="1522000" />
-      <workItem from="1587816386761" duration="1749000" />
+      <workItem from="1587816386761" duration="2099000" />
     </task>
     <task id="LOCAL-00001" summary="update">
       <created>1577202239408</created>
@@ -681,7 +685,14 @@
       <option name="project" value="LOCAL" />
       <updated>1587821508884</updated>
     </task>
-    <option name="localTasksCounter" value="37" />
+    <task id="LOCAL-00037" summary="update: 提交文件">
+      <created>1587821545110</created>
+      <option name="number" value="00037" />
+      <option name="presentableId" value="LOCAL-00037" />
+      <option name="project" value="LOCAL" />
+      <updated>1587821545110</updated>
+    </task>
+    <option name="localTasksCounter" value="38" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -767,16 +778,6 @@
           <url>jar://C:/Program Files/Java/jdk1.8.0_171/src.zip!/java/util/function/Predicate.java</url>
           <line>114</line>
           <option name="timeStamp" value="2" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/main/java/com/learn/jdk/extension/Test.java</url>
-          <line>45</line>
-          <option name="timeStamp" value="3" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/main/java/com/learn/jdk/extension/Test.java</url>
-          <line>44</line>
-          <option name="timeStamp" value="4" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://E:/workspaceperson/halo/src/main/java/run/halo/app/service/impl/ThemeServiceImpl.java</url>
