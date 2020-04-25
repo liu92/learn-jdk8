@@ -9,6 +9,9 @@
         <module name="nhdc-cloud-mc-center-service" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel target="1.8" />
+    <bytecodeTargetLevel target="1.8">
+      <module name="learn-java-concurrenty.main" target="1.8" />
+      <module name="learn-java-concurrenty.test" target="1.8" />
+    </bytecodeTargetLevel>
   </component>
 </project>
