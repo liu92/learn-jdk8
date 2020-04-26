@@ -47,6 +47,16 @@ public class Test {
         double v = new BigDecimal(ratioString).doubleValue();
         System.out.println("v=============="+ v);
 
+        int keyNumber = 81;
+        Double ratio = 6.4 ;
+        String subNumber =keepRandomPoint(keyNumber/ratio,9);
+        System.out.println("subNumber========="+Double.valueOf(subNumber));
+
+        Double stockNum = 12.65625;
+        Double occupyStock =0.0;
+        Double numTransferPlanOut=0.0;
+        Double stock = calSellAbleStock(stockNum, occupyStock, numTransferPlanOut);
+        System.out.println("calSellAbleStock============" + stock);
 
     }
 
@@ -65,5 +75,24 @@ public class Test {
         } else {
             return (new BigDecimal(value)).setScale(n, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
         }
+    }
+
+    public static Double calSellAbleStock(Double stockNum, Double occupyStock, Double numTransferPlanOut) {
+        Double result=add(stockNum,-occupyStock,-numTransferPlanOut);
+        return result;
+    }
+
+
+    public static Double add(Double... params) {
+        BigDecimal result = new BigDecimal(0);
+        Double[] var2 = params;
+        int var3 = params.length;
+
+        for(int var4 = 0; var4 < var3; ++var4) {
+            Double param = var2[var4];
+            result = result.add( new BigDecimal(param.toString()));
+        }
+
+        return result.doubleValue();
     }
 }
