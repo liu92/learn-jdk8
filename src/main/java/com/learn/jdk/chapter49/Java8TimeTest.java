@@ -5,6 +5,7 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
+import java.util.Date;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -61,13 +62,14 @@ public class Java8TimeTest {
         System.out.println(time);
 
         LocalTime time1 = time.plusHours(3).plusMinutes(10);
+
         System.out.println(time1);
         System.out.println("---------------");
 
 
         //加
         LocalDate localDate3 = localDate.plus(2, ChronoUnit.WEEKS);
-        System.out.println(localDate3);
+        System.out.println("plus"+localDate3);
         //减
         LocalDate localDate4 = localDate.minus(2, ChronoUnit.MONTHS);
         System.out.println(localDate4);
@@ -79,6 +81,7 @@ public class Java8TimeTest {
         System.out.println("---------------");
 
         LocalDate localDate5 = LocalDate.now();
+
         LocalDate localDate6 = LocalDate.of(2019, 3,28);
         System.out.println(localDate5.isAfter(localDate6));
         System.out.println(localDate5.isBefore(localDate6));
@@ -132,5 +135,10 @@ public class Java8TimeTest {
         System.out.println(period.getMonths());
         //间隔天数
         System.out.println(period.getDays());
+
+
+        Date date = new Date();
+        LocalDate localDate9 = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate().plusDays(30);
+        System.out.println("localDate9=============="+localDate9);
     }
 }

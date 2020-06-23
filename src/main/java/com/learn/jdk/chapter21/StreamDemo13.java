@@ -15,13 +15,17 @@ import java.util.stream.Collectors;
  */
 public class StreamDemo13 {
     public static void main(String[] args) {
-        List<String> list = Arrays.asList("Hi", "Hello", "你好,哈哈哈");
+        List<String> list = Arrays.asList("Hi", "Hello", "哈哈，你好");
         List<String> list2 = Arrays.asList("zairian", "lisa",
                 "wangle", "zarla");
         // 将两个集合组合起来，形成各自 人名打招呼。
 
         List<String> result = list.stream().flatMap(item -> list2.stream().map(item2 -> item + " " + item2)).
                 collect(Collectors.toList());
-        result.forEach(System.out::println);
+//        result.forEach(System.out::println);
+
+        List<String> collect = list.stream().map(i->i).collect(Collectors.toList());
+
+        collect.forEach(System.out::println);
     }
 }
