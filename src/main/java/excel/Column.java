@@ -46,12 +46,18 @@ public class Column {
     /**
      *是否有子节点
      */
-    private boolean HasChilren;
+    private boolean hasChildRen;
     /**
      * 树的级别 从0开始
      */
-    private int tree_step;
+    private int treeStep;
+    /**
+     * id
+     */
     private String id;
+    /**
+     * 父级id
+     */
     private String pid;
     public Column(){};
     public Column(String content, String fieldName){
@@ -59,8 +65,8 @@ public class Column {
         this.fieldName = fieldName;
     }
 
-    public Column(String fieldName, String content, int tree_step) {
-        this.tree_step = tree_step;
+    public Column(String fieldName, String content, int treeStep) {
+        this.treeStep = treeStep;
         this.fieldName = fieldName;
         this.content = content;
     }
@@ -97,12 +103,20 @@ public class Column {
         this.id = id;
     }
 
-    public boolean isHasChilren() {
-        return HasChilren;
+    public boolean isHasChildRen() {
+        return hasChildRen;
     }
 
-    public void setHasChilren(boolean hasChilren) {
-        HasChilren = hasChilren;
+    public void setHasChildRen(boolean hasChildRen) {
+        this.hasChildRen = hasChildRen;
+    }
+
+    public int getTreeStep() {
+        return treeStep;
+    }
+
+    public void setTreeStep(int treeStep) {
+        this.treeStep = treeStep;
     }
 
     public String getContent() {
@@ -128,13 +142,6 @@ public class Column {
         this.listTpamscolumn = listTpamscolumn;
     }
 
-    public int getTree_step() {
-        return tree_step;
-    }
-
-    public void setTree_step(int tree_step) {
-        this.tree_step = tree_step;
-    }
 
     public int getRow() {
         return row;

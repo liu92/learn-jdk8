@@ -21,6 +21,23 @@ import java.util.*;
  * *  行内数据:表头以下的数据
  *    功能:动态生成单级，多级Excel表头
  *    备注：tree型结构数据的root节点的id必须为零（0）
+ *
+ *   以HSSF为例，XSSF操作相同。
+ *   首先，理解一下一个Excel的文件的组织形式，
+ *   一个Excel文件对应于一个workbook(HSSFWorkbook)，
+ *   一个workbook可以有多个sheet（HSSFSheet）组成，一个sheet是由多个row（HSSFRow）组成，
+ *   一个row是由多个cell（HSSFCell）组成。
+ *
+ * 1、用HSSFWorkbook打开或者创建“Excel文件对象”
+ *
+ * 2、用HSSFWorkbook对象返回或者创建Sheet对象
+ *
+ * 3、用Sheet对象返回行对象，用行对象得到Cell对象
+ *
+ * 4、对Cell对象读写。
+ *
+ *
+ *
  * @Author: lin
  * @Date: 2020/6/23 16:13
  * History:
@@ -62,6 +79,7 @@ public class ExcelTool<T> {
      */
     public ExcelTool(){
         this.title="sheet1";
+        //创建一个 workbook, 也就是相当于创建 excel文件
         this.workbook = new XSSFWorkbook();
         init(0);
     }
@@ -156,6 +174,7 @@ public class ExcelTool<T> {
     /**ExcelTool 属性 get、set 方法 结束*/
     //内部统一调用的样式初始化
     private void init(int styleFlag){
+        //创建样式
         this.styleHead = this.workbook.createCellStyle();
         //版本问题
         // this.styleHead.setAlignment(XSSFCellStyle.ALIGN_CENTER) 报错
@@ -201,15 +220,16 @@ public class ExcelTool<T> {
     /**
      * 导出表格 无返回
      * @param listTpamscolumn 表头数据
-     * @param datas 行内数据
+     * @param dataS 行内数据
      * @param FilePath 保存路径
      * @param flag
      * @param rowFlag
      * @throws Exception
      */
-    public void exportExcel(List<Column> listTpamscolumn, List<T> datas, String FilePath, boolean flag, boolean rowFlag) throws Exception{
-        splitDataToSheets(datas, listTpamscolumn, flag, rowFlag);
-        save(this.workbook,FilePath);
+    public void exportExcel(List<Column> listTpamscolumn, List<T> dataS,
+                            String FilePath, boolean flag, boolean rowFlag) throws Exception{
+        splitDataToSheets(listTpamscolumn, dataS,  flag, rowFlag);
+        save(this.workbook, FilePath);
     }
 
     /**
@@ -220,8 +240,9 @@ public class ExcelTool<T> {
      * @return
      * @throws Exception
      */
-    public XSSFWorkbook exportWorkbook(List<Column> listTpamscolumn, List<T> datas , boolean flag) throws Exception{
-        splitDataToSheets(datas, listTpamscolumn,flag,false);
+    public XSSFWorkbook exportWorkbook(List<Column> listTpamscolumn, List<T> datas ,
+                                       boolean flag) throws Exception{
+        splitDataToSheets(listTpamscolumn,datas, flag,false);
         return this.workbook;
     }
     /**
@@ -234,7 +255,7 @@ public class ExcelTool<T> {
      * @throws Exception
      */
     public InputStream exportExcel(List<Column> listTpamscolumn, List<T> datas, boolean flag, boolean rowFlag) throws Exception {
-        splitDataToSheets(datas, listTpamscolumn,flag,rowFlag);
+        splitDataToSheets(listTpamscolumn,datas, flag,rowFlag);
         return save(this.workbook);
     }
     /**
@@ -247,9 +268,13 @@ public class ExcelTool<T> {
      * @throws Exception
      */
     private void writeSheet(XSSFSheet  sheet, List<T> data, List<Column> listTpamscolumn, boolean flag, boolean rowFlag) throws Exception {
+        //设置列宽
         sheet.setDefaultColumnWidth(colWidth);
+        //设置行高
         sheet.setDefaultRowHeightInPoints(rowHeight);
+        //根据数据的行数和列数，在excel创建单元格cell
         sheet = createHead(sheet, listTpamscolumn.get(0).getTotalRow(), listTpamscolumn.get(0).getTotalCol());
+
         createHead(listTpamscolumn, sheet,0);
         if(flag) {
             //控制是否 bug修复：每次写入行数据时，总是漏第一个条数据 rowIndex 错误
@@ -264,14 +289,17 @@ public class ExcelTool<T> {
      * @param rowFlag  输出展示数据的结构(表头下面行的数据)
      * @throws Exception
      */
-    private void splitDataToSheets(List<T> data, List<Column> listTpamscolumn, boolean flag, boolean rowFlag)throws Exception{
+    private void splitDataToSheets(List<Column> listTpamscolumn, List<T> data,  boolean flag,
+                                   boolean rowFlag)throws Exception{
         int dataCount = data.size();
         int maxColumn = 65535;
         int pieces = dataCount/maxColumn;
         for(int i = 1; i <= pieces;i++){
+            //一个workbook 有多个sheet
+            //创建 sheet
             XSSFSheet sheet = this.workbook.createSheet(this.title+i);
             List<T> subList = data.subList((i-1)*maxColumn, i*maxColumn);
-            writeSheet(sheet,subList, listTpamscolumn,flag,rowFlag);
+            writeSheet(sheet, subList, listTpamscolumn,flag,rowFlag);
         }
         XSSFSheet sheet = this.workbook.createSheet(this.title+(pieces+1));
         writeSheet(sheet, data.subList(pieces*maxColumn, dataCount), listTpamscolumn,flag,rowFlag);
@@ -385,7 +413,13 @@ public class ExcelTool<T> {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        try {if(null!=fOut){ fOut.close();}} catch (Exception e1) { }
+        try {
+          if(null!=fOut){
+            fOut.close();
+        }
+        } catch (Exception e1) {
+
+        }
     }
 
     /**
@@ -424,7 +458,7 @@ public class ExcelTool<T> {
         if(v instanceof Map){
             Map m=(Map)v;
             m.forEach((k, val) -> {
-                if(k.equals(tpamscolumn.getFieldName()) && !tpamscolumn.isHasChilren()){
+                if(k.equals(tpamscolumn.getFieldName()) && !tpamscolumn.isHasChildRen()){
                     value[0] =val;
                 }
             });
@@ -435,7 +469,7 @@ public class ExcelTool<T> {
                 Field f = fields[i];
                 f.setAccessible(true); // 设置些属性是可以访问的
                 if(tpamscolumn.getFieldName().equals(f.getName())
-                        && !tpamscolumn.isHasChilren() ) {
+                        && !tpamscolumn.isHasChildRen() ) {
                     // && !tpamscolumn.isHasChilren()
                     value[0] = f.get(v);
                 }
@@ -492,9 +526,11 @@ public class ExcelTool<T> {
      */
     public void createHead(List<Column> listTpamscolumn, XSSFSheet sheetCo, int rowIndex){
         XSSFRow row = sheetCo.getRow(rowIndex);
-//        if(row == null)row = sheetCo.createRow(rowIndex);
-        int len = listTpamscolumn.size();//当前行 有多少列
-        for(int i = 0; i <len; i++){//i是headers的索引，n是Excel的索引 多级表头
+       //if(row == null)row = sheetCo.createRow(rowIndex);
+        //当前行 有多少列
+        int len = listTpamscolumn.size();
+        //i是headers的索引，n是Excel的索引 多级表头
+        for(int i = 0; i <len; i++){
             Column tpamscolumn = listTpamscolumn.get(i);
             //创建这一行的第几列单元格
             int r = tpamscolumn.getRow();
@@ -526,7 +562,7 @@ public class ExcelTool<T> {
             // 有边框
             RegionUtil.setBorderRight(BorderStyle.valueOf((short) 1), cra, sheetCo);
 
-            if(tpamscolumn.isHasChilren()){
+            if(tpamscolumn.isHasChildRen()){
                 rowIndex=r+1;
                 createHead( tpamscolumn.getListTpamscolumn(), sheetCo,rowIndex);
             }
@@ -594,11 +630,13 @@ public class ExcelTool<T> {
                     if (id.equals(k)) {
                         tpamscolumn.setId(String.valueOf(val));
                     }
-                    if (pid.equals(k)) {tpamscolumn.setPid((String) val);}
+                    if (pid.equals(k)) {
+                        tpamscolumn.setPid((String) val);
+                    }
                     if (content.equals(k)) {
                         tpamscolumn.setContent((String) val);
                     }
-                    if (fielName.equals(k) && fielName != null) {
+                    if (fielName != null && fielName.equals(k)) {
                         tpamscolumn.setFieldName((String) val);
                     }
                 });
@@ -634,23 +672,192 @@ public class ExcelTool<T> {
         setColNum(lc,s,s);
         return s;
     }
+
+
+
+    /**
+     * 转换成column对象 返回tree数据结构
+     * 支持：List<map>、某个具体对象（entity）数据的转换
+     * @param list 需要转换的数据
+     * @param rootid  rootid的值
+     * @return
+     * @throws Exception
+     */
+    public List<Column> columnTransformerTwo(List<T> list , List<String> keyList, String rootid) throws Exception {
+        List<Column> lc=new ArrayList<>();
+        if(list.get(0) instanceof Map){
+            for(Map m:(List<Map>)list) {
+                Column tpamscolumn = new Column();
+                //java8 以上的遍历方式
+                m.forEach((k, val) -> {
+                    for (String key : keyList) {
+                        int index = key.indexOf("_");
+                        String substring = key.substring(0, index);
+                        if (key.equals(k) && substring.equals("id")) {
+                            tpamscolumn.setId(String.valueOf(val));
+
+                        }
+                        if (key.equals(k) && substring.equals("pid")){
+                            tpamscolumn.setPid((String) val);
+                        }
+                        if (key.equals(k) && substring.equals("content")){
+                            tpamscolumn.setContent((String) val);
+                        }
+                        if(key.equals(k) && substring.equals("fieldName")){
+                            tpamscolumn.setFieldName((String) val);
+                        }
+                    }
+
+                });
+                lc.add(tpamscolumn);
+            }
+        }else {
+            for (T t : list) {//反射
+                Column tpamscolumn = new Column();
+                Class cls = t.getClass();
+                Field[] fs=cls.getDeclaredFields();
+                for (int i = 0; i < fs.length; i++) {
+                    Field f = fs[i];
+                    // 设置些属性是可以访问的
+                    f.setAccessible(true);
+                    for (String key : keyList) {
+                        int index = key.indexOf("_");
+                        String substring = key.substring(0, index);
+                        if (substring.equals(f.getName()) && substring.equals("id") && f.get(t) != null) {
+                            tpamscolumn.setId(f.get(t).toString());
+                        }
+                        if (substring.equals(f.getName()) && substring.equals("pid") &&  f.get(t) != null) {
+                            tpamscolumn.setPid(f.get(t).toString());
+                        }
+                        if (substring.equals(f.getName()) && substring.equals("content")  && f.get(t) != null) {
+                            tpamscolumn.setContent(f.get(t).toString());
+                        }
+                        if (substring.equals(f.getName()) && substring.equals("fieldName") && key!=null && key.equals(f.getName())) {
+                            tpamscolumn.setFieldName(f.get(t).toString());
+                        }
+
+//                        if(substring.equals("pid")){
+//                            tpamscolumn.setPid(f.get(t).toString());
+//                        }
+//                        if(substring.equals("content")){
+//                            tpamscolumn.setContent(f.get(t).toString());
+//                        }
+//                        if(substring.equals("fieldName")){
+//                            tpamscolumn.setFieldName(f.get(t).toString());
+//                        }
+                    }
+
+//                    if (key.equals("pid") && key.equals(f.getName()) && f.get(t) != null) {
+//                        tpamscolumn.setPid(f.get(t).toString());
+////                    if (pid.equals(f.getName()) && ( f.get(t) == null || "".equals(f.get(t)))) tpamscolumn.setPid("0");
+//                    }
+//                    if (key.equals("content") && key.equals(f.getName()) && f.get(t) != null) {
+//                        tpamscolumn.setContent(f.get(t).toString());
+//                    }
+//                    if ( key.equals("fieldName") && key!=null && key.equals(f.getName())) {
+//                        tpamscolumn.setFieldName(f.get(t).toString());
+//                    }
+                }
+                lc.add(tpamscolumn);
+            }
+        }
+        setParm(lc,rootid);//处理一下
+        List<Column> s = TreeTool.buildByRecursive(lc,rootid);
+        setColNum(lc,s,s);
+        return s;
+    }
+
+
+
+    /**
+     * 转换成column对象 返回tree数据结构
+     * 支持：List<map>、某个具体对象（entity）数据的转换
+     * @param list 需要转换的数据
+     * @param id 当前节点id 字段的名称  主键
+     * @param pid 父节点id 字段的名称
+     * @param content 填写表头单元格内容的 字段名称
+     * @param fielName 填写行内数据对的 字段名称
+     * @param rootid  rootid的值
+     * @return
+     * @throws Exception
+     */
+    public List<Column> columnTransformerThree(List<T> list , String id, String pid, String content, String fielName,String rootid) throws Exception {
+        List<Column> lc=new ArrayList<>();
+        if(list.get(0) instanceof Map){
+            for(Map m:(List<Map>)list) {
+                Column tpamscolumn = new Column();
+                //java8 以上的遍历方式
+                m.forEach((k, val) -> {
+                    if (id.equals(k)) {
+                        tpamscolumn.setId(String.valueOf(val));
+                    }
+                    if (pid.equals(k)) {tpamscolumn.setPid((String) val);}
+                    if (content.equals(k)) {
+                        tpamscolumn.setContent((String) val);
+                    }
+                    if (fielName != null && fielName.equals(k)) {
+                        tpamscolumn.setFieldName((String) val);
+                    }
+                });
+                lc.add(tpamscolumn);
+            }
+        }else {
+            //反射
+            for (T t : list) {
+                Column tpamscolumn = new Column();
+                Class cls = t.getClass();
+                Field[] fs=cls.getDeclaredFields();
+                for (int i = 0; i < fs.length; i++) {
+                    Field f = fs[i];
+                    // 设置些属性是可以访问的
+                    f.setAccessible(true);
+                    if (id.equals(f.getName()) && f.get(t) != null) {
+                        tpamscolumn.setId(f.get(t).toString());
+                    }
+                    if (pid.equals(f.getName()) && f.get(t) != null) {
+                        tpamscolumn.setPid(f.get(t).toString());
+//                    if (pid.equals(f.getName()) && ( f.get(t) == null || "".equals(f.get(t)))) tpamscolumn.setPid("0");
+                    }
+                    if (content.equals(f.getName()) && f.get(t) != null) {
+                        tpamscolumn.setContent(f.get(t).toString());
+                    }
+                    if ( f.get(t) != null  && fielName!=null && fielName.equals(f.getName())) {
+                        tpamscolumn.setFieldName(f.get(t).toString());
+                    }
+                }
+                lc.add(tpamscolumn);
+            }
+        }
+        setParm(lc,rootid);//处理一下
+        List<Column> s = TreeTool.buildByRecursive(lc,rootid);
+        setColNum(lc,s,s);
+        return s;
+    }
+
+
+
+
     /**
      * 设置基础的参数
      * @param list
      */
     public static void setParm(List<Column> list,String rootid){
-        int row = 0;//excel第几行
-        int rLen = 0; //excel 跨多少行
+        //excel第几行
+        int row = 0;
+        //excel 跨多少行
+        int rLen = 0;
         int totalRow = TreeTool.getMaxStep(list);
         int totalCol = TreeTool.getDownChilren(list,rootid);
         for(int i=0;i<list.size();i++){
             Column poit= list.get(i);
-            int tree_step = TreeTool.getTreeStep(list,poit.getPid(),0);//往上遍历tree
-            poit.setTree_step(tree_step);
-            poit.setRow(tree_step);//设置第几行
+            //往上遍历tree
+            int tree_step = TreeTool.getTreeStep(list,poit.getPid(),0);
+            poit.setTreeStep(tree_step);
+            //设置第几行
+            poit.setRow(tree_step);
             //判断是否有节点
             boolean hasCh = TreeTool.hasChild( list,poit);
-            poit.setHasChilren(hasCh);
+            poit.setHasChildRen(hasCh);
             if(hasCh){
                 poit.setrLen(0);//设置跨多少行
             }else{
@@ -678,7 +885,8 @@ public class ExcelTool<T> {
     public static void setColNum(List<Column> list, List<Column> treeList,List<Column> flist){
 //        int col = pcIndex;//excel第几列
 //        int cLen ;//xcel跨多少列
-        List<Column> new_list = new ArrayList<>();//新的遍历list
+        //新的遍历list
+        List<Column> new_list = new ArrayList<>();
         for(int i = 0;i < treeList.size();i++){
             Column poit= treeList.get(i);
 //            String temp_id = TreeTool.getStepFid(list,poit.getId() ,1);
@@ -688,7 +896,8 @@ public class ExcelTool<T> {
             int cLen = TreeTool.getDownChilren(list,poit.getId());
             if(cLen<=1){cLen=0;}
 //            else  cLen--;
-            poit.setcLen(cLen);//设置跨多少列
+            //设置跨多少列
+            poit.setcLen(cLen);
             if(poit.getListTpamscolumn().size()>0){
                 new_list.addAll(poit.getListTpamscolumn());
             }
@@ -708,6 +917,15 @@ public class ExcelTool<T> {
         String cellvalue = "";
         if (cell != null) {
             switch (cell.getCellType()) { // 判断当前Cell的Type
+//
+//                CELL_TYPE_BLANK          代表空白单元格
+//                CELL_TYPE_BOOLEAN        代表布尔单元（true或false）
+//                CELL_TYPE_ERROR          表示在单元的误差值
+//                CELL_TYPE_FORMULA        表示一个单元格公式的结果
+//                CELL_TYPE_NUMERIC        表示对一个单元的数字数据
+//                CELL_TYPE_STRING         表示对一个单元串（文本）
+
+
 
 //                CellType.STRING代替XSSFCell.CELL_TYPE_STRING
                 case NUMERIC:  // 如果当前Cell的Type为NUMERIC

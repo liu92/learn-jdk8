@@ -32,9 +32,9 @@ public class StreamDemo14 {
 //        System.out.println(collect);
 
         //根据名字分组，然后 count
-//        Map<String, Long> collect2 = list.stream().
-//                collect(Collectors.groupingBy(StudentTest::getName, Collectors.counting()));
-//        System.out.println(collect2);
+        Map<String, Long> collect2 = list.stream().
+                collect(Collectors.groupingBy(StudentTest::getName, Collectors.counting()));
+        System.out.println("collect2=======================" + collect2);
 
         //根据名称分组，再求分数的平均
         Map<String, Double> collect3 = list.stream().
