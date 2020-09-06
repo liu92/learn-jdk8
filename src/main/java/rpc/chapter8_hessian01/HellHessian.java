@@ -7,6 +7,7 @@ import rpc.User;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.math.BigDecimal;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -31,6 +32,11 @@ public class HellHessian {
         System.out.println(bytes.length);
         User u1 = (User) deserialize(bytes);
         System.out.println(u1);
+
+        BigDecimal t = null;
+        BigDecimal a = null;
+        String s = calculateDividePercent(t, a);
+        System.out.println("calculateDividePercent="+s);
     }
 
     /**
@@ -70,6 +76,14 @@ public class HellHessian {
 
 
 
+    private static String calculateDividePercent(BigDecimal a, BigDecimal b){
+        String percent =
+                b == null ? "-" :
+                        b.compareTo(new BigDecimal(0)) == 0 ? "-":
+                                a == null ? "0.00%" :
+                                        a.multiply(new BigDecimal(100)).divide(b,BigDecimal.ROUND_HALF_UP) +  "%";
+        return percent;
+    }
 
 
 
